@@ -1,0 +1,22 @@
+#
+# DSRC Python module Jamroot file to use with Boost Build tool
+#
+
+import python ;
+ 
+
+# User-specified path to the Boost project
+use-project boost 
+  : /home/andrzej/dev/lib/boost_1_49_0/ ;
+
+
+# Project-wide requirements
+project
+  : requirements <library>/boost/python//boost_python <library>/boost/thread//boost_thread ;
+
+
+# Extension modules
+python-extension pydsrc
+	: Interface.cpp ../src/DsrcModule.cpp ../src/DsrcArchive.cpp ../src/FastqFile.cpp ../src/BlockCompressorExt.cpp ../src/Configurable.cpp ../src/DsrcWorker.cpp ../src/DsrcIo.cpp ../src/DsrcFile.cpp ../src/DsrcOperator.cpp ../src/BlockCompressor.cpp ../src/FastqIo.cpp ../src/RecordsProcessor.cpp ../src/FastqParser.cpp ../src/FastqStream.cpp ../src/FileStream.cpp ../src/StdStream.cpp ../src/TagModeler.cpp ../src/DnaModelerHuffman.cpp ../src/QualityPositionModeler.cpp ../src/QualityRLEModeler.cpp ../src/huffman.cpp
+	: <toolset>gcc <variant>release <address-model>64 <link>shared <runtime-link>shared <debug-symbols>off <inlining>full <optimization>speed <warnings>on <cxxflags>"-O2 -m64 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DUSE_BOOST_THREAD" ;
+
