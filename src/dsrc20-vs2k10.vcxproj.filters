@@ -72,19 +72,19 @@
     <ClCompile Include="StdStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\BlockCompressorExt.cpp">
+    <ClCompile Include="BlockCompressorExt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\Configurable.cpp">
+    <ClCompile Include="Configurable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\DsrcArchive.cpp">
+    <ClCompile Include="DsrcArchive.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\DsrcModule.cpp">
+    <ClCompile Include="DsrcModule.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\FastqFile.cpp">
+    <ClCompile Include="FastqFile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
