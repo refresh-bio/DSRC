@@ -11,14 +11,17 @@
 
 #if defined (_WIN32)
 #	define _CRT_SECURE_NO_WARNINGS
-
 #	pragma warning(disable : 4996) // D_SCL_SECURE
 #	pragma warning(disable : 4244) // conversion uint64 to uint32
 //#	pragma warning(disable : 4267)
-
 #	define FOPEN	fopen
 #	define FSEEK	_fseeki64
 #	define FTELL	_ftelli64
+#	define FCLOSE	fclose
+#elif __APPLE__	// Apple by default suport 64 bit file operations (Darwin 10.5+)
+#	define FOPEN	fopen
+#	define FSEEK	fseek
+#	define FTELL	ftell
 #	define FCLOSE	fclose
 #else
 #	if !defined(_LARGEFILE_SOURCE)

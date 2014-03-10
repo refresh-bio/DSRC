@@ -10,11 +10,12 @@ CXXFLAGS += -DNDEBUG -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
 CXXFLAGS += -Wall #-pedantic
 
 # comment the line below to compile and link in shared mode
-CXXFLAGS += -static
+# CXXFLAGS += -static
 
-# compile using boost::thread
+# compile using boost::thread 
+# boost::thread from 1.50+ explicitely requires boost::system library
 CXXFLAGS += -DUSE_BOOST_THREAD
-DEP_LIBS += -lboost_thread
+DEP_LIBS += -lboost_thread -lboost_system
 
 # necessary library to link
 # (even when using boost, remember to link it _after_ linking with boost::thread)
