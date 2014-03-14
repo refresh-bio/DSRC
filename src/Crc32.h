@@ -10,7 +10,7 @@
 #ifndef CRC32_H
 #define CRC32_H
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <vector>
 #include <string>

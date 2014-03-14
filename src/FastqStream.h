@@ -9,7 +9,7 @@
 #ifndef H_FASTQSTREAM
 #define H_FASTQSTREAM
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 //#include "Common.h"
 #include "Fastq.h"

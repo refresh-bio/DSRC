@@ -9,7 +9,7 @@
 #ifndef H_FILESTREAM
 #define H_FILESTREAM
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "DataStream.h"
 

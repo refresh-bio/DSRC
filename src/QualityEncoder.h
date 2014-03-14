@@ -10,7 +10,7 @@
 #ifndef H_QUALITYENCODER
 #define H_QUALITYENCODER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "RangeCoder.h"
 #include "SymbolCoderRC.h"

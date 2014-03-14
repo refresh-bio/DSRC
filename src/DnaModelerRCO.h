@@ -10,7 +10,7 @@
 #ifndef H_DNAMODELRCO
 #define H_DNAMODELRCO
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "DnaModeler.h"
 #include "Fastq.h"

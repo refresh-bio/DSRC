@@ -10,7 +10,7 @@
 #ifndef CPP_CONFIGURABLE
 #define CPP_CONFIGURABLE
 
-#include "../include/Configurable.h"
+#include "../include/dsrc/Configurable.h"
 
 #include "Common.h"
 

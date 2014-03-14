@@ -19,11 +19,11 @@
 
 #include <Python.h>
 
-#include "../include/Globals.h"
-#include "../include/FastqRecord.h"
-#include "../include/FastqFile.h"
-#include "../include/DsrcModule.h"
-#include "../include/DsrcArchive.h"
+#include "../include/dsrc/Globals.h"
+#include "../include/dsrc/FastqRecord.h"
+#include "../include/dsrc/FastqFile.h"
+#include "../include/dsrc/DsrcModule.h"
+#include "../include/dsrc/DsrcArchive.h"
 
 namespace dsrc
 {

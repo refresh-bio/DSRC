@@ -11,7 +11,7 @@
 #ifndef _HUFFMAN_H
 #define _HUFFMAN_H
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "BitMemory.h"
 

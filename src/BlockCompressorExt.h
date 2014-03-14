@@ -10,8 +10,8 @@
 #ifndef BLOCKCOMPRESSOREXT_H
 #define BLOCKCOMPRESSOREXT_H
 
-#include "../include/Globals.h"
-#include "../include/FastqRecord.h"
+#include "../include/dsrc/Globals.h"
+#include "../include/dsrc/FastqRecord.h"
 
 #include "BlockCompressor.h"
 

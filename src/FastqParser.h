@@ -10,7 +10,7 @@
 #ifndef H_FASTQPARSER
 #define H_FASTQPARSER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Common.h"
 #include "Fastq.h"

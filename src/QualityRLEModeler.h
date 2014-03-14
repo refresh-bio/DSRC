@@ -10,7 +10,7 @@
 #ifndef H_QUALITYRLEMODELER
 #define H_QUALITYRLEMODELER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Fastq.h"
 #include "QualityModeler.h"

@@ -10,7 +10,7 @@
 #ifndef H_RECORDSPROCESSOR
 #define H_RECORDSPROCESSOR
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <algorithm>
 

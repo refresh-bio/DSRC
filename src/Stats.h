@@ -10,7 +10,7 @@
 #ifndef H_STATS
 #define H_STATS
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <algorithm>
 

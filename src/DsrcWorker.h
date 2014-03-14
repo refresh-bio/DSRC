@@ -10,7 +10,7 @@
 #ifndef H_DSRCWORKER
 #define H_DSRCWORKER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Fastq.h"
 #include "BitMemory.h"

@@ -10,7 +10,7 @@
 #ifndef H_FASTQREADER
 #define H_FASTQREADER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Common.h"
 #include "Fastq.h"

@@ -10,7 +10,7 @@
 #ifndef H_RANGECODER
 #define H_RANGECODER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "BitMemory.h"
 

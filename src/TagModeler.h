@@ -10,7 +10,7 @@
 #ifndef H_TAGMODELER
 #define H_TAGMODELER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <vector>
 #include <map>

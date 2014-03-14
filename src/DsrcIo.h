@@ -10,7 +10,7 @@
 #ifndef H_DSRCWRITER
 #define H_DSRCWRITER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Buffer.h"
 #include "DataQueue.h"

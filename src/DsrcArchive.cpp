@@ -7,7 +7,7 @@
   Version: 2.00
 */
 
-#include "../include/DsrcArchive.h"
+#include "../include/dsrc/DsrcArchive.h"
 
 #include "BlockCompressorExt.h"
 #include "DsrcFile.h"

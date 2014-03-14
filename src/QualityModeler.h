@@ -1,7 +1,7 @@
 #ifndef QUALITYMODELER_H
 #define QUALITYMODELER_H
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Common.h"
 #include "RecordsProcessor.h"

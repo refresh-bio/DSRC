@@ -10,7 +10,7 @@
 #ifndef H_DNAMODELERBASICB2
 #define H_DNAMODELERBASICB2
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "DnaModeler.h"
 #include "Stats.h"

@@ -10,7 +10,7 @@
 #ifndef H_STDSTREAM
 #define H_STDSTREAM
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "DataStream.h"
 

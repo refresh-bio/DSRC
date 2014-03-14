@@ -7,7 +7,7 @@
   Version: 2.00
 */
  
-#include "../include/FastqFile.h"
+#include "../include/dsrc/FastqFile.h"
 
 #include "Common.h"
 #include "Buffer.h"

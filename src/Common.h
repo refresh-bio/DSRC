@@ -10,7 +10,7 @@
 #ifndef H_COMMON
 #define H_COMMON
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #ifndef NDEBUG
 #	define DEBUG 1

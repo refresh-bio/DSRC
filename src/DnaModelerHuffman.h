@@ -1,7 +1,7 @@
 #ifndef DNAMODELHUFFMAN_H
 #define DNAMODELHUFFMAN_H
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "DnaModeler.h"
 #include "Stats.h"

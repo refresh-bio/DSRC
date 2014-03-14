@@ -1,6 +1,6 @@
 all: example1 example2
 
-INC_PATH = ../../include/
+INC_PATH = ../../include/dsrc
 LIB_PATH = ../../lib/
 DSRC_LIB = -ldsrc
 

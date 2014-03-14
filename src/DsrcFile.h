@@ -9,7 +9,7 @@
 #ifndef H_DSRCFILE
 #define H_DSRCFILE
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <vector>
 

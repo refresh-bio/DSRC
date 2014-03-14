@@ -10,7 +10,7 @@
 #ifndef H_BLOCKCOMPRESSOR
 #define H_BLOCKCOMPRESSOR
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <vector>
 

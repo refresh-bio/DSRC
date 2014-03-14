@@ -10,7 +10,7 @@
 #ifndef H_DATA_POOL
 #define H_DATA_POOL
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <vector>
 
