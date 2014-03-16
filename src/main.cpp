@@ -82,7 +82,7 @@ int main(int argc_, const char* argv_[])
 void message()
 {
 	std::cerr << "DSRC - DNA Sequence Reads Compressor\n";
-	std::cerr << "version: 2.00 RC @ 01.12.2013\n\n";
+	std::cerr << "version: 2.00 RC @ 16.03.2014\n\n";
 	std::cerr << "usage: dsrc <c|d> [options] <input filename> <output filename>\n";
 	std::cerr << "compression options:\n";
 	std::cerr << "\t-d<n>\t: DNA compression mode: 0-3, default: " << InputParameters::DefaultDnaCompressionLevel << '\n';
