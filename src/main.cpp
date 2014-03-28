@@ -177,7 +177,7 @@ bool parse_arguments(int argc_, const char* argv_[], InputArguments& outArgs_)
 						break;
 					case 1:
 						pars.dnaCompressionLevel = 2;
-						pars.qualityCompressionLevel = 1;
+						pars.qualityCompressionLevel = 2;
 						pars.fastqBufferSizeMB = 64;
 						break;
 					case 0:
