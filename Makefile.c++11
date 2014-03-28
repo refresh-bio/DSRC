@@ -1,6 +1,6 @@
-.PHONY: all bin lib pylib examples clean
+.PHONY: all lib bin examples clean
 
-all: bin lib examples
+all: lib bin examples
 
 export
 
@@ -19,11 +19,21 @@ CXXFLAGS += -std=c++11
 DEP_LIBS += -lpthread
 
 
+APP_NAME = dsrc
+LIB_NAME = libdsrc.a
+LIB_DIR = lib
+BIN_DIR = bin
+SRC_DIR = src
+
 bin:
 	cd src; ${MAKE} bin
+	test -d $(BIN_DIR) || mkdir $(BIN_DIR)
+	mv $(SRC_DIR)/$(APP_NAME) $(BIN_DIR)/
 
 lib:
 	cd src; ${MAKE} lib
+	test -d $(LIB_DIR) || mkdir $(LIB_DIR)
+	mv $(SRC_DIR)/$(LIB_NAME) $(LIB_DIR)/
 
 examples:
 	cd examples/cpplib; ${MAKE}
@@ -31,3 +41,5 @@ examples:
 clean:
 	cd src; ${MAKE} clean
 	cd examples/cpplib; ${MAKE} clean
+	-rm -r $(LIB_DIR)
+	-rm -r $(BIN_DIR)

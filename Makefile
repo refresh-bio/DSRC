@@ -1,4 +1,4 @@
-.PHONY: all bin lib pylib examples clean
+.PHONY: all lib bin pylib examples clean
 
 all: bin lib examples
 
@@ -21,20 +21,31 @@ DEP_LIBS += -lboost_thread -lboost_system
 # (even when using boost, remember to link it _after_ linking with boost::thread)
 DEP_LIBS += -lpthread
 
+APP_NAME = dsrc
+LIB_NAME = libdsrc.a
+LIB_DIR = lib
+BIN_DIR = bin
+SRC_DIR = src
 
 bin:
 	cd src; ${MAKE} bin
+	test -d $(BIN_DIR) || mkdir $(BIN_DIR)
+	mv $(SRC_DIR)/$(APP_NAME) $(BIN_DIR)/
 
 lib:
 	cd src; ${MAKE} lib
-
-pylib:
-	# make sure to configure properly Jamroot file and have boost libraries installed
-	cd py; bjam
+	test -d $(LIB_DIR) || mkdir $(LIB_DIR)
+	mv $(SRC_DIR)/$(LIB_NAME) $(LIB_DIR)/
 
 examples:
 	cd examples/cpplib; ${MAKE}
 
+pylib:
+	cd py; ${MAKE}
+
 clean:
 	cd src; ${MAKE} clean
 	cd examples/cpplib; ${MAKE} clean
+	cd py; ${MAKE} clean
+	-rm -r $(LIB_DIR)
+	-rm -r $(BIN_DIR)

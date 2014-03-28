@@ -10,12 +10,12 @@ import python ;
 # To compile DSRC Python module please specify your boost installation directory below
 #
 use-project boost 
-  : /absolute/path/to/user/boost/directory/ ;
+  : /home/lucas/dev/lib/boost_1_49_0/ ;
 
 
 # Project-wide requirements
 project
-  : requirements <library>/boost/python//boost_python <library>/boost/thread//boost_thread <library>/boost/thread//boost_system ;
+  : requirements <library>/boost/python//boost_python <library>/boost/thread//boost_thread <library>/boost/system//boost_system ;
 
 # Extension modules
 python-extension pydsrc
