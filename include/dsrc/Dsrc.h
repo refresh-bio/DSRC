@@ -10,7 +10,7 @@
 #ifndef H_DSRC
 #define H_DSRC
 
-#include "../include/Globals.h"
+#include "Globals.h"
 #include "DsrcModule.h"
 #include "FastqFile.h"
 #include "DsrcArchive.h"

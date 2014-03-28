@@ -10,7 +10,7 @@
 #ifndef H_BITMEMORY
 #define H_BITMEMORY
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <vector>
 #include <algorithm>

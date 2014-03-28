@@ -10,7 +10,7 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <algorithm>
 

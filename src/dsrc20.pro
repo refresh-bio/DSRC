@@ -84,12 +84,12 @@ HEADERS += \
 
 HEADERS += \
     BlockCompressorExt.h \
-    ../include/Configurable.h \
-    ../include/DsrcArchive.h \
-    ../include/FastqFile.h \
-    ../include/DsrcModule.h \
-    ../include/Dsrc.h \
-    ../include/Globals.h \
-    ../include/FastqRecord.h
+    ../dsrc/include/Configurable.h \
+    ../dsrc/include/DsrcArchive.h \
+    ../dsrc/include/FastqFile.h \
+    ../dsrc/include/DsrcModule.h \
+    ../dsrc/include/Dsrc.h \
+    ../dsrc/include/Globals.h \
+    ../dsrc/include/FastqRecord.h
 
 #LIBS += -lboost_python -lpython2.7

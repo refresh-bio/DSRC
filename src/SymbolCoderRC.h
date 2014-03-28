@@ -10,7 +10,7 @@
 #ifndef H_SYMBOLCODERRC
 #define H_SYMBOLCODERRC
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "RangeCoder.h"
 

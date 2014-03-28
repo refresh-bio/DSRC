@@ -1,6 +1,6 @@
 all: bin lib
 
-INC_DIR = ../include
+INC_DIR = ../include/dsrc
 SRC_DIR = .
 LIB_DIR = ../lib
 BIN_DIR = ../bin

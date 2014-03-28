@@ -7,7 +7,7 @@
   Version: 2.00
 */
  
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <iostream>
 
@@ -19,7 +19,7 @@ namespace th = boost;
 namespace th = std;
 #endif
 
-#include "../include/DsrcModule.h"
+#include "../include/dsrc/DsrcModule.h"
 
 #include "DsrcOperator.h"
 

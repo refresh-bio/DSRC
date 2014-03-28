@@ -10,7 +10,7 @@
 #ifndef H_DATASTREAM
 #define H_DATASTREAM
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 namespace dsrc
 {

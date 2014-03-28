@@ -203,25 +203,25 @@
     <ClInclude Include="BlockCompressorExt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\Globals.h">
+    <ClInclude Include="..\include\dsrc\Globals.h">
       <Filter>Header Files\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\Configurable.h">
+    <ClInclude Include="..\include\dsrc\Configurable.h">
       <Filter>Header Files\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\Dsrc.h">
+    <ClInclude Include="..\include\dsrc\Dsrc.h">
       <Filter>Header Files\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\DsrcArchive.h">
+    <ClInclude Include="..\include\dsrc\DsrcArchive.h">
       <Filter>Header Files\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\DsrcModule.h">
+    <ClInclude Include="..\include\dsrc\DsrcModule.h">
       <Filter>Header Files\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\FastqFile.h">
+    <ClInclude Include="..\include\dsrc\FastqFile.h">
       <Filter>Header Files\lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\FastqRecord.h">
+    <ClInclude Include="..\include\dsrc\FastqRecord.h">
       <Filter>Header Files\lib</Filter>
     </ClInclude>
   </ItemGroup>

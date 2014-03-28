@@ -10,7 +10,7 @@
 #ifndef H_QUALITYMODELERPROXY
 #define H_QUALITYMODELERPROXY
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Fastq.h"
 #include "QualityModeler.h"

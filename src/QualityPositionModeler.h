@@ -10,7 +10,7 @@
 #ifndef H_QUALITYPOSITIONMODELER
 #define H_QUALITYPOSITIONMODELER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "QualityModeler.h"
 #include "SymbolCoderRC.h"

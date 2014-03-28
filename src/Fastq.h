@@ -10,7 +10,7 @@
 #ifndef H_FASTQ_SRC
 #define H_FASTQ_SRC
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 #include "Common.h"
 
 #include <vector>

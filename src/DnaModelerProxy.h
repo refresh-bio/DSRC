@@ -10,7 +10,7 @@
 #ifndef H_DNAMODELERPROXY
 #define H_DNAMODELERPROXY
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Stats.h"
 #include "DnaModelerBasicB2.h"

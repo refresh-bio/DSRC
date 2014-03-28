@@ -10,7 +10,7 @@
 #ifndef H_DNAMODELER
 #define H_DNAMODELER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "Common.h"
 

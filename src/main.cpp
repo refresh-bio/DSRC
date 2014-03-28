@@ -7,7 +7,7 @@
   Version: 2.00
 */
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <iostream>
 #include <cstring>

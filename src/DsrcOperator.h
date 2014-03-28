@@ -10,7 +10,7 @@
 #ifndef H_DSRCOPERATOR
 #define H_DSRCOPERATOR
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include <string>
 

@@ -9,7 +9,7 @@
 #ifndef H_QUALITYORDERMODELER
 #define H_QUALITYORDERMODELER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #include "QualityEncoder.h"
 #include "Fastq.h"

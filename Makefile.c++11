@@ -10,7 +10,7 @@ CXXFLAGS += -DNDEBUG -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
 CXXFLAGS += -Wall #-pedantic
 
 # there are problems when statically linking with pthreads and libstdc++
-# so only shared linking is possible
+# so use only shared linking
 #CXXFLAGS += -static
 
 # compile using c++11
@@ -24,10 +24,6 @@ bin:
 
 lib:
 	cd src; ${MAKE} lib
-
-pylib:
-	# make sure to configure properly Jamroot file and have boost libraries installed
-	cd py; bjam
 
 examples:
 	cd examples/cpplib; ${MAKE}

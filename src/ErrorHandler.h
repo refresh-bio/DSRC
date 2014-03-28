@@ -10,7 +10,7 @@
 #ifndef H_ERRORHANDLER
 #define H_ERRORHANDLER
 
-#include "../include/Globals.h"
+#include "../include/dsrc/Globals.h"
 
 #ifdef USE_BOOST_THREAD
 #include <boost/thread.hpp>
