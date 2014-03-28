@@ -25,10 +25,10 @@ bool IFastqStreamReader::ReadNextChunk(FastqDataChunk* chunk_)
 
 	// flush the data from previous incomplete chunk
 	uchar* data = chunk_->data.Pointer();
-	const uint64 cbuf_size = chunk_->data.Size();
+	const uint64 cbufSize = chunk_->data.Size();
 	chunk_->size = 0;
 
-	int64 to_read = cbuf_size - bufferSize;
+	int64 toRead = cbufSize - bufferSize;
 	if (bufferSize > 0)
 	{
 		std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
@@ -37,24 +37,29 @@ bool IFastqStreamReader::ReadNextChunk(FastqDataChunk* chunk_)
 	}
 
 	// read the next chunk
-	int64 r = Read(data + chunk_->size, to_read);
+	int64 r = Read(data + chunk_->size, toRead);
 
 	if (r > 0)
 	{
-		if (r == to_read)	// somewhere before end
+		if (r == toRead)	// somewhere before end
 		{
-			uint64 chunk_end = cbuf_size - SwapBufferSize;
+			uint64 chunkEnd = cbufSize - SwapBufferSize;
 
-			chunk_end = GetNextRecordPos(data, chunk_end, cbuf_size);
+			chunkEnd = GetNextRecordPos(data, chunkEnd, cbufSize);
 
-			chunk_->size = chunk_end - 1;
+			chunk_->size = chunkEnd - 1;
+			if (usesCrlf)
+				chunk_->size -= 1;
 
-			std::copy(data + chunk_end, data + cbuf_size, swapBuffer.Pointer());
-			bufferSize = cbuf_size - chunk_end;
+			std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+			bufferSize = cbufSize - chunkEnd;
 		}
 		else				// at the end of file
 		{
 			chunk_->size += r - 1;	// skip the last EOF symbol
+			if (usesCrlf)
+				chunk_->size -= 1;
+
 			eof = true;
 		}
 	}

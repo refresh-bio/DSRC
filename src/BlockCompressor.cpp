@@ -114,16 +114,16 @@ void BlockCompressor::ParseRecords(const FastqDataChunk& chunk_)
 	if (compSettings.tagPreserveFlags != 0)
 	{
 		FastqParserExt parser;
-		uint64 cutBytes = parser.ParseFromWithCut(chunk_, records, chunkHeader.recordsCount, compSettings.tagPreserveFlags);
-
-		ASSERT(cutBytes < chunk_.size);
-		chunkHeader.chunkSize = chunk_.size - cutBytes;
+		uint64 size = parser.ParseFrom(chunk_, records, chunkHeader.recordsCount, compSettings.tagPreserveFlags);
+		ASSERT(size <= chunk_.size);
+		chunkHeader.chunkSize = size;
 	}
 	else
 	{
 		FastqParser parser;
-		parser.ParseFrom(chunk_, records, chunkHeader.recordsCount);
-		chunkHeader.chunkSize = chunk_.size;
+		uint64 size = parser.ParseFrom(chunk_, records, chunkHeader.recordsCount);
+		ASSERT(size <= chunk_.size);
+		chunkHeader.chunkSize = size;
 	}
 
 	ASSERT(chunkHeader.recordsCount > 0);

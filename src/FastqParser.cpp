@@ -20,6 +20,7 @@ FastqParser::FastqParser()
 	,	memory(NULL)
 	,	memoryPos(0)
 	,	memorySize(0)
+	,	skippedBytes(0)
 {}
 
 
@@ -136,7 +137,7 @@ bool FastqParser::Analyze(const FastqDataChunk& chunk_, FastqDatasetType& header
 	return recCount > 1;
 }
 
-void FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_)
+uint64 FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_)
 {
 	ASSERT(buffer == NULL);
 
@@ -152,10 +153,12 @@ void FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecor
 			records_.resize(records_.size() + REC_EXTENSION_FACTOR(records_.size()));
 	}
 	ASSERT(rec_count_ > 0);
+
+	return chunk_.size - skippedBytes;
 }
 
 
-uint64 FastqParserExt::ParseFromWithCut(const FastqDataChunk &chunk_, std::vector<FastqRecord> &records_, uint64 &rec_count_, uint64 tagPreserveFlags_)
+uint64 FastqParserExt::ParseFrom(const FastqDataChunk &chunk_, std::vector<FastqRecord> &records_, uint64 &rec_count_, uint64 tagPreserveFlags_)
 {
 	ASSERT(buffer == NULL);
 	ASSERT(tagPreserveFlags_ != 0);
@@ -175,7 +178,9 @@ uint64 FastqParserExt::ParseFromWithCut(const FastqDataChunk &chunk_, std::vecto
 			records_.resize(records_.size() + REC_EXTENSION_FACTOR(records_.size()));
 	}
 	ASSERT(rec_count_ > 0);
-	return totalBytesCut;
+	ASSERT(chunk_.size >= totalBytesCut + skippedBytes);
+
+	return chunk_.size - totalBytesCut - skippedBytes;
 }
 
 bool FastqParserExt::ReadNextRecord(FastqRecord &rec_, uchar *tagBuffer_, uint64 tagPreserveFlags_)

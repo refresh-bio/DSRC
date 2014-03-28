@@ -35,6 +35,7 @@ public:
 		,	swapBuffer(SwapBufferSize)
 		,	bufferSize(0)
 		,	eof(false)
+		,	usesCrlf(false)
 	{}
 
 	virtual ~IFastqStreamReader()
@@ -66,6 +67,7 @@ private:
 	core::Buffer	swapBuffer;
 	uint64			bufferSize;
 	bool			eof;
+	bool			usesCrlf;
 
 	uint64 GetNextRecordPos(uchar* data_, uint64 pos_, const uint64 size_);
 
@@ -73,8 +75,17 @@ private:
 	{
 		ASSERT(pos_ < size_);
 
-		while (data_[pos_] != '\n' && pos_ < size_)
+		while (data_[pos_] != '\n' && data_[pos_] != '\r' && pos_ < size_)
 			++pos_;
+
+		if (data_[pos_] == '\r' && pos_ < size_)
+		{
+			if (data_[pos_ + 1] == '\n')
+			{
+				usesCrlf = true;
+				++pos_;
+			}
+		}
 	}
 
 };

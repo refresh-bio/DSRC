@@ -26,7 +26,7 @@ class FastqParser
 public:
 	FastqParser();
 
-	void ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_);
+	uint64 ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_);
 	bool Analyze(const FastqDataChunk& chunk_, FastqDatasetType& header_, bool estimateQualityOffset_ = false);
 
 protected:
@@ -34,6 +34,7 @@ protected:
 	byte* memory;
 	uint64 memoryPos;
 	uint64 memorySize;
+	uint64 skippedBytes;
 
 	bool ReadNextRecord(FastqRecord& rec_)
 	{
@@ -74,9 +75,13 @@ protected:
 				}
 				str_[i++] = (uchar)c;
 			}
-			else if (i > 0)
+			else
 			{
-				break;
+				if (c == '\r' && Peekc() == '\n')	// case of CR LF
+					Skipc();
+
+				if (i > 0)
+					break;
 			}
 		}
 		str_[i] = 0;
@@ -97,8 +102,11 @@ protected:
 			{
 				len++;
 			}
-			else// if (len > 0)
+			else
 			{
+				if (c == '\r' && Peekc() == '\n')	// case of CR LF
+					Skipc();
+
 				break;
 			}
 		}
@@ -110,6 +118,19 @@ protected:
 		if (memoryPos == memorySize)
 			return -1;
 		return memory[memoryPos++];
+	}
+
+	void Skipc()
+	{
+		memoryPos++;
+		skippedBytes++;
+	}
+
+	int32 Peekc()
+	{
+		if (memoryPos == memorySize)
+			return -1;
+		return memory[memoryPos];
 	}
 
 	void ExtendBuffer(uint32 size_)
@@ -132,7 +153,7 @@ public:
 	{}
 
 	// this is a bad design, but trying to avoid virtual function call
-	uint64 ParseFromWithCut(const FastqDataChunk &chunk_, std::vector<FastqRecord> &records_, uint64 &rec_count_, uint64 tagPreserveFlags_);
+	uint64 ParseFrom(const FastqDataChunk &chunk_, std::vector<FastqRecord> &records_, uint64 &rec_count_, uint64 tagPreserveFlags_);
 	bool ReadNextRecord(FastqRecord& rec_, uchar* tagBuffer_, uint64 tagPreserveFlags_);
 
 private:
