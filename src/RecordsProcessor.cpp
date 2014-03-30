@@ -184,26 +184,26 @@ LosslessRecordsProcessor::LosslessRecordsProcessor(uint32 qualityOffset_, bool c
 	std::fill(dnaFromIndexTable, dnaFromIndexTable + DnaStats::MaxSymbolCount, +InvalidValue);
 
 	// normal symbols
-	dnaToIndexTable['A'] = 0;		dnaFromIndexTable[0]  = 'A';
-	dnaToIndexTable['G'] = 1;		dnaFromIndexTable[1]  = 'G';
-	dnaToIndexTable['C'] = 2;		dnaFromIndexTable[2]  = 'C';
-	dnaToIndexTable['T'] = 3;		dnaFromIndexTable[3]  = 'T';
+	dnaToIndexTable[(int32)'A'] = 0;		dnaFromIndexTable[0]  = 'A';
+	dnaToIndexTable[(int32)'G'] = 1;		dnaFromIndexTable[1]  = 'G';
+	dnaToIndexTable[(int32)'C'] = 2;		dnaFromIndexTable[2]  = 'C';
+	dnaToIndexTable[(int32)'T'] = 3;		dnaFromIndexTable[3]  = 'T';
 	// amb codes
-	dnaToIndexTable['N'] = 4;		dnaFromIndexTable[4]  = 'N';
-	dnaToIndexTable['R'] = 5;		dnaFromIndexTable[5]  = 'R';
-	dnaToIndexTable['W'] = 6;		dnaFromIndexTable[6]  = 'W';
-	dnaToIndexTable['S'] = 7;		dnaFromIndexTable[7]  = 'S';
-	dnaToIndexTable['K'] = 8;		dnaFromIndexTable[8]  = 'K';
-	dnaToIndexTable['M'] = 9;		dnaFromIndexTable[9]  = 'M';
-	dnaToIndexTable['D'] = 10;		dnaFromIndexTable[10] = 'D';
-	dnaToIndexTable['V'] = 11;		dnaFromIndexTable[11] = 'V';
-	dnaToIndexTable['H'] = 12;		dnaFromIndexTable[12] = 'H';
-	dnaToIndexTable['B'] = 13;		dnaFromIndexTable[13] = 'B';
-	dnaToIndexTable['Y'] = 14;		dnaFromIndexTable[14] = 'Y';
-	dnaToIndexTable['X'] = 15;		dnaFromIndexTable[15] = 'X';
-	dnaToIndexTable['U'] = 16;		dnaFromIndexTable[16] = 'U';
-	dnaToIndexTable['.'] = 17;		dnaFromIndexTable[17] = '.';
-	dnaToIndexTable['-'] = 18;		dnaFromIndexTable[18] = '-';
+	dnaToIndexTable[(int32)'N'] = 4;		dnaFromIndexTable[4]  = 'N';
+	dnaToIndexTable[(int32)'R'] = 5;		dnaFromIndexTable[5]  = 'R';
+	dnaToIndexTable[(int32)'W'] = 6;		dnaFromIndexTable[6]  = 'W';
+	dnaToIndexTable[(int32)'S'] = 7;		dnaFromIndexTable[7]  = 'S';
+	dnaToIndexTable[(int32)'K'] = 8;		dnaFromIndexTable[8]  = 'K';
+	dnaToIndexTable[(int32)'M'] = 9;		dnaFromIndexTable[9]  = 'M';
+	dnaToIndexTable[(int32)'D'] = 10;		dnaFromIndexTable[10] = 'D';
+	dnaToIndexTable[(int32)'V'] = 11;		dnaFromIndexTable[11] = 'V';
+	dnaToIndexTable[(int32)'H'] = 12;		dnaFromIndexTable[12] = 'H';
+	dnaToIndexTable[(int32)'B'] = 13;		dnaFromIndexTable[13] = 'B';
+	dnaToIndexTable[(int32)'Y'] = 14;		dnaFromIndexTable[14] = 'Y';
+	dnaToIndexTable[(int32)'X'] = 15;		dnaFromIndexTable[15] = 'X';
+	dnaToIndexTable[(int32)'U'] = 16;		dnaFromIndexTable[16] = 'U';
+	dnaToIndexTable[(int32)'.'] = 17;		dnaFromIndexTable[17] = '.';
+	dnaToIndexTable[(int32)'-'] = 18;		dnaFromIndexTable[18] = '-';
 }
 
 void LosslessRecordsProcessor::ProcessForward(FastqRecord &rec_)
