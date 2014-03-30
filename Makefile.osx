@@ -1,22 +1,18 @@
 .PHONY: all lib bin examples clean
 
-all: lib bin examples
+all: lib bin examples pylib
 
 export
 
 CXX = clang++
 CXXFLAGS = -O2 -m64
 CXXFLAGS += -DNDEBUG -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
-CXXFLAGS += -Wall #-pedantic
-
-# there are problems when statically linking on Mac OSX
-#CXXFLAGS += -static
+CXXFLAGS += -Wall
 
 # compile using c++11
 CXXFLAGS += -std=c++11
 
 DEP_LIBS += -lpthread
-
 
 APP_NAME = dsrc
 LIB_NAME = libdsrc.a
@@ -37,14 +33,12 @@ lib:
 examples:
 	cd examples/cpplib; ${MAKE}
 
-
-# experimental - library not fully tested under Mac OSX, todo
-#pylib:
-#	cd py; ${MAKE}
+pylib:
+	cd py; ${MAKE}
 
 clean:
 	cd src; ${MAKE} clean
 	cd examples/cpplib; ${MAKE} clean
-#	cd py; ${MAKE} clean
+	cd py; ${MAKE} clean
 	-rm -r $(LIB_DIR)
 	-rm -r $(BIN_DIR)
