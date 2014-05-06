@@ -15,7 +15,7 @@
 #include "DsrcOperator.h"
 #include "utils.h"
 
-const std::string version = "2.00 RC @ 28.03.2014";
+const std::string version = "2.00 @ 06.05.2014";
 
 using namespace dsrc;
 using namespace dsrc::core;
@@ -104,7 +104,23 @@ void message()
 
 	std::cerr << "both compression and decompression options:\n";
 	std::cerr << "\t-t<n>\t: processing threads number, default (available h/w threads): " << IDsrcOperator::AvailableHardwareThreadsNum << ", max: 64" << '\n';
-	std::cerr << "\t-s\t: use stdin/stdout for reading/writing FASTQ data\n";
+	std::cerr << "\t-s\t: use stdin/stdout for reading/writing raw FASTQ data\n\n";
+
+	std::cerr << "usage examples:\n";
+	std::cerr << "* compress SRR001471.fastq file saving DSRC archive to SRR001471.dsrc:\n";
+	std::cerr << "\tdsrc c SRR001471.fastq SRR001471.dsrc\n";
+	std::cerr << "* compress file in the fast mode with CRC32 checking and using 4 threads:\n";
+	std::cerr << "\tdsrc c -m0 -c -t4 SRR001471.fastq SRR001471.dsrc\n";
+	std::cerr << "* compress file using DNA and Quality compression level 2 and using 512 MB buffer:\n";
+	std::cerr << "\tdsrc c -d2 -q2 -b512 SRR001471.fastq SRR001471.dsrc\n";
+	std::cerr << "* compress file in the best mode with lossy Quality mode and preserving only 1–4 fields from record IDs:\n";
+	std::cerr << "\tdsrc c -m2 -l -f1,2,3,4 SRR001471.fastq SRR001471.dsrc\n";
+	std::cerr << "* compress in the best mode reading raw FASTQ data from stdin:\n";
+	std::cerr << "\tcat SRR001471.fastq | dsrc c -m2 -s SRR001471.dsrc\n";
+	std::cerr << "* decompress SRR001471.dsrc archive saving output FASTQ file to SRR001471.out.fastq:\n";
+	std::cerr << "\tdsrc d SRR001471.dsrc SRR001471.out.fastq\n";
+	std::cerr << "* decompress archive using 4 threads and streaming raw FASTQ data to stdout:\n";
+	std::cerr << "\tdsrc d -t4 -s SRR001471.dsrc > SRR001471.out.fastq\n";
 }
 
 bool parse_arguments(int argc_, const char* argv_[], InputArguments& outArgs_)

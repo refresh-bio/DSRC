@@ -195,7 +195,7 @@ about twice), default: `false`
 
 ### Options for both compression and decompression
 * `-t<n>` — processing threads number, default: max available hardware threads
-* `-s` — use stdin/stdout for reading/writing FASTQ data (stderr is used for info/warning
+* `-s` — use stdin/stdout for reading/writing raw FASTQ files data (stderr is used for info/warning
 messages)
 
 
@@ -217,7 +217,7 @@ record IDs:
 
     dsrc c -m2 -l -f1,2,3,4 SRR001471.fastq SRR001471.dsrc
     
-Compress in the best mode reading FASTQ file read from stdin:
+Compress in the best mode reading raw FASTQ data from stdin:
 
     cat SRR001471.fastq | dsrc c -m2 -s SRR001471.dsrc
     
@@ -225,7 +225,7 @@ Decompress `SRR001471.dsrc` archive saving output FASTQ file to `SRR001471.out.f
 
     dsrc d SRR001471.dsrc SRR001471.out.fastq
 
-Decompress archive using `4` threads and streaming FASTQ data to stdout:
+Decompress archive using `4` threads and streaming raw FASTQ data to stdout:
 
     dsrc d -t4 -s SRR001471.dsrc > SRR001471.out.fastq
     
