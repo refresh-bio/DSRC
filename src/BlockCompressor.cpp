@@ -50,7 +50,6 @@ inline void CONTROL_CHECK_R(BitMemoryReader& r_)
 #endif
 
 
-// ********************************************************************************************
 BlockCompressor::BlockCompressor(const FastqDatasetType& type_, const CompressionSettings& settings_)
 	:	datasetType(type_)
 	,	compSettings(settings_)
@@ -94,7 +93,7 @@ BlockCompressor::BlockCompressor(const FastqDatasetType& type_, const Compressio
 	}
 }
 
-// ********************************************************************************************
+
 BlockCompressor::~BlockCompressor()
 {
 	delete qualityModeler;
@@ -102,12 +101,13 @@ BlockCompressor::~BlockCompressor()
 	delete recordsProcessor;
 }
 
-// ********************************************************************************************
+
 void BlockCompressor::Reset()
 {
 	chunkHeader.flags = 0;
 	chunkHeader.recordsCount = 0;
 }
+
 
 void BlockCompressor::ParseRecords(const FastqDataChunk& chunk_)
 {
@@ -143,6 +143,7 @@ void BlockCompressor::PreprocessRecords(uint32 checksumFlags_)
 	}
 }
 
+
 void BlockCompressor::PostprocessRecords(uint32 checksumFlags_)
 {
 	if (datasetType.colorSpace)
@@ -160,6 +161,7 @@ void BlockCompressor::PostprocessRecords(uint32 checksumFlags_)
 		chunkHeader.checksum = checksum;
 	}
 }
+
 
 void BlockCompressor::AnalyzeRecords()
 {	
@@ -196,7 +198,7 @@ void BlockCompressor::AnalyzeMetaData(const DnaStats& , const QualityStats& qSta
 	}
 }
 
-// ********************************************************************************************
+
 void BlockCompressor::Store(BitMemoryWriter &memory_, const FastqDataChunk &chunk_)
 {
 	ParseRecords(chunk_);
@@ -209,6 +211,8 @@ void BlockCompressor::Store(BitMemoryWriter &memory_, const FastqDataChunk &chun
 
 	Reset();
 }
+
+
 void BlockCompressor::StoreRecords(BitMemoryWriter &memory_)
 {
 	CONTROL_CHECK_W(memory_);
@@ -226,7 +230,7 @@ void BlockCompressor::StoreRecords(BitMemoryWriter &memory_)
 	CONTROL_CHECK_W(memory_);
 }
 
-// ********************************************************************************************
+
 void BlockCompressor::Read(BitMemoryReader &memory_, FastqDataChunk &chunk)
 {
 	ReadRecords(memory_, chunk);
@@ -235,6 +239,7 @@ void BlockCompressor::Read(BitMemoryReader &memory_, FastqDataChunk &chunk)
 
 	Reset();
 }
+
 
 void BlockCompressor::ReadRecords(BitMemoryReader &memory_, FastqDataChunk &chunk_)
 {
@@ -262,6 +267,7 @@ void BlockCompressor::ReadRecords(BitMemoryReader &memory_, FastqDataChunk &chun
 
 	CONTROL_CHECK_R(memory_);
 }
+
 
 void BlockCompressor::ReadMetaData(BitMemoryReader &memory_)
 {
@@ -326,13 +332,15 @@ void BlockCompressor::AnalyzeTags()
 {
 	bool cs_reduce_lens = datasetType.colorSpace && chunkHeader.csConstBeginSym;
 
-	tagModeler.InitializeFieldsStats(records[0]);
+	TagAnalyzer* analyzer = tagModeler.GetAnalyzer();
+
+	analyzer->InitializeFieldsStats(records[0]);
 
 	for (uint32 j = 0; j < chunkHeader.recordsCount; ++j)
 	{
 		FastqRecord &rec = records[j];
 
-		tagModeler.UpdateFieldsStats(rec);
+		analyzer->UpdateFieldsStats(rec);
 
 		//
 		// this should be logically split
@@ -357,7 +365,10 @@ void BlockCompressor::AnalyzeTags()
 		}
 	}
 
-	tagModeler.FinalizeFieldsStats();
+	analyzer->FinalizeFieldsStats();
+
+	if (analyzer->GetStats().mixedFormatting)
+		chunkHeader.flags |= FLAG_MIXED_FIELD_FORMATTING;
 }
 
 
@@ -403,7 +414,6 @@ void BlockCompressor::StoreMetaData(BitMemoryWriter &memory_)
 	memory_.FlushPartialWordBuffer();
 }
 
-// ********************************************************************************************
 
 void BlockCompressor::StoreDNA(BitMemoryWriter &memory_)
 {
@@ -417,21 +427,26 @@ void BlockCompressor::StoreQuality(BitMemoryWriter &memory_)
 }
 
 
-// ********************************************************************************************
 void BlockCompressor::StoreTags(BitMemoryWriter &memory_)
 {
+	ITagEncoder* encoder = NULL;
+	if ((chunkHeader.flags & FLAG_MIXED_FIELD_FORMATTING) != 0)
+		encoder = tagModeler.SelectEncoder(TagModeler::TagRawHuffman);
+	else
+		encoder = tagModeler.SelectEncoder(TagModeler::TagTokenizeHuffman);
+
 	const uint32 lenBits = core::bit_length(chunkHeader.maxQuaLength - chunkHeader.minQuaLength);
 	const bool isVariableLen = lenBits > 0;
 
-	tagModeler.StartEncoding(memory_);
+	encoder->StartEncoding(memory_, &tagModeler.GetAnalyzer()->GetStats());
 
 	// store record title info + some meta-data
 	//
 	for (uint32 i = 0; i < chunkHeader.recordsCount; ++i)
 	{
-		FastqRecord &rec = records[i];
+		const FastqRecord &rec = records[i];
 
-		tagModeler.EncodeNextFields(memory_, rec);
+		encoder->EncodeNextFields(memory_, rec);
 
 		// save other meta info
 		//
@@ -441,102 +456,94 @@ void BlockCompressor::StoreTags(BitMemoryWriter &memory_)
 		}
 	}
 
-	tagModeler.FinishEncoding(memory_);
-
-	//memory_.FlushPartialWordBuffer();
+	encoder->FinishEncoding(memory_);
 }
 
 
-// ********************************************************************************************
 void BlockCompressor::ReadDNA(BitMemoryReader &memory_)
 {
 	dnaModeler->Decode(memory_, records.data(), chunkHeader.recordsCount);
 }
+
 
 void BlockCompressor::ReadQuality(BitMemoryReader &memory_)
 {
 	qualityModeler->Decode(memory_, records.data(), chunkHeader.recordsCount);
 }
 
-// ********************************************************************************************
-void BlockCompressor::ReadTags(BitMemoryReader &memory_, FastqDataChunk& fq_chunk_)
-{
-	uchar* chunkBegin = fq_chunk_.data.Pointer();
-	uint32 bufPos = 0;
 
-	memory_.FlushInputWordBuffer();
+void BlockCompressor::ReadTags(BitMemoryReader &memory_, FastqDataChunk& fqChunk_)
+{
+	ITagDecoder* decoder = NULL;
+
+	if ((chunkHeader.flags & FLAG_MIXED_FIELD_FORMATTING) != 0)
+		decoder = tagModeler.SelectDecoder(TagModeler::TagRawHuffman);
+	else
+		decoder = tagModeler.SelectDecoder(TagModeler::TagTokenizeHuffman);
+
+	uchar* chunkBegin = fqChunk_.data.Pointer();
+	uint32 bufPos = 0;
 
 	const uint32 lenBits = core::bit_length(chunkHeader.maxQuaLength - chunkHeader.minQuaLength);
 	const bool isVariableLen =  lenBits > 0;
+	const bool csConstDeltaEncode = datasetType.colorSpace && (chunkHeader.flags & FLAG_DELTA_CONSTANT) != 0;
 
-	const bool cs_const_delta_enc = datasetType.colorSpace && (chunkHeader.flags & FLAG_DELTA_CONSTANT) != 0;
-
-	tagModeler.StartDecoding(memory_);
+	decoder->StartDecoding(memory_);
 
 	for (uint32 i = 0; i < chunkHeader.recordsCount; ++i)
 	{
-		ASSERT(bufPos < fq_chunk_.data.Size());
+		ASSERT(bufPos < fqChunk_.data.Size());
 
-		FastqRecord& cur_rec = records[i];
-		cur_rec.titleLen = 0;
-		cur_rec.title = chunkBegin + bufPos;
+		FastqRecord& curRec = records[i];
+		curRec.titleLen = 0;
+		curRec.title = chunkBegin + bufPos;
 
-		tagModeler.DecodeNextFields(memory_, cur_rec);
+		decoder->DecodeNextFields(memory_, curRec);
 
-		// parsed the title, now bind the rest of pointers to buffer
-		//
-		bufPos += cur_rec.titleLen;		// title
+		bufPos += curRec.titleLen;		// title
 		chunkBegin[bufPos++] = '\n';
 
+		// code below should be logically split, but to avoid another loop
+		// throught the records we are doing it here
 
-		//
-		// this can be logically split
-		//
-
-
-		// read here some record bit flags -- quality flags
-		//
 		if (isVariableLen)
-		{
-			cur_rec.qualityLen = memory_.GetBits(lenBits) + chunkHeader.minQuaLength;
-		}
+			curRec.qualityLen = memory_.GetBits(lenBits) + chunkHeader.minQuaLength;
 		else
-		{
-			cur_rec.qualityLen = chunkHeader.maxQuaLength;
-		}
+			curRec.qualityLen = chunkHeader.maxQuaLength;
 
-		cur_rec.sequenceLen = cur_rec.qualityLen;
+		curRec.sequenceLen = curRec.qualityLen;
 
-		cur_rec.sequence = chunkBegin + bufPos;
-		bufPos += cur_rec.sequenceLen;
-		if (cs_const_delta_enc)
+		curRec.sequence = chunkBegin + bufPos;
+		bufPos += curRec.sequenceLen;
+		if (csConstDeltaEncode)
 		{
-			cur_rec.sequence++;
+			curRec.sequence++;
 			bufPos++;
 		}
 		chunkBegin[bufPos++] = '\n';
-		
+
 		chunkBegin[bufPos++] = '+';
 		if (datasetType.plusRepetition)
 		{
-			std::copy(cur_rec.title + 1, cur_rec.title + cur_rec.titleLen, chunkBegin + bufPos);
-			bufPos += cur_rec.titleLen - 1;
+			std::copy(curRec.title + 1, curRec.title + curRec.titleLen, chunkBegin + bufPos);
+			bufPos += curRec.titleLen - 1;
 		}
 		chunkBegin[bufPos++] = '\n';
 
-		cur_rec.quality = chunkBegin + bufPos;
-		bufPos += cur_rec.qualityLen;
-		if (cs_const_delta_enc)
+		curRec.quality = chunkBegin + bufPos;
+		bufPos += curRec.qualityLen;
+		if (csConstDeltaEncode)
 		{
-			cur_rec.quality++;
+			curRec.quality++;
 			bufPos++;
 		}
-		ASSERT(bufPos < fq_chunk_.size);
+		ASSERT(bufPos < fqChunk_.size);
 		chunkBegin[bufPos++] = '\n';
 	}
 
-	tagModeler.FinishDecoding(memory_);
+	decoder->FinishDecoding(memory_);
 }
+
 
 bool BlockCompressor::VerifyChecksum(BitMemoryReader &memory_, FastqDataChunk &chunk)
 {

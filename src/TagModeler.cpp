@@ -156,26 +156,26 @@ Field::~Field()
 	Huffman_local.resize(0);
 }
 
-void TagModeler::InitializeFieldsStats(const FastqRecord &rec_)
+void TagAnalyzer::InitializeFieldsStats(const FastqRecord &rec_)
 {
 	const char *c_separators = " ._,=:/-#"; //9
 	const std::vector<uchar> separators(c_separators, c_separators + 9 + 1);
 
-	// TODO: reset fields, do not delete!
-	fields.clear();
+	stats.Reset();
 	prevFieldValues.clear();
-	// //
 
 	uint32 start_pos = 0;
 	uint32 n_field = 0;
 
 	for (uint32 i = 0; i <= rec_.titleLen; ++i)
 	{
+		stats.symbolFreqs[rec_.title[i]] += (i != rec_.titleLen);
+
 		if (!std::count(separators.begin(), separators.end(), rec_.title[i]) && (i != rec_.titleLen))
 			continue;
 
-		fields.push_back(Field());
-		Field& field = fields[n_field];
+		stats.fields.push_back(Field());
+		Field& field = stats.fields[n_field];
 
 		field.data = new uchar[i-start_pos+1];
 		std::copy(rec_.title + start_pos, rec_.title + i, field.data);
@@ -220,25 +220,39 @@ void TagModeler::InitializeFieldsStats(const FastqRecord &rec_)
 	// prepare counter for updating fields statistics
 	//
 	recordCounter = 0;
-	prevFieldValues.resize(fields.size(), 0);
+	prevFieldValues.resize(stats.fields.size(), 0);
 }
 
-void TagModeler::UpdateFieldsStats(const FastqRecord &rec_)
+void TagAnalyzer::UpdateFieldsStats(const FastqRecord &rec_)
 {
 	ASSERT(rec_.titleLen > 0);
-	//ASSERT(rec.title_size > 0);
 
+	stats.minTitleLen = MIN(stats.minTitleLen, rec_.titleLen);
+	stats.maxTitleLen = MAX(stats.maxTitleLen, rec_.titleLen);
+
+	if (stats.mixedFormatting)
+	{
+		for (uint32 i = 0; i < rec_.titleLen; ++i)
+			stats.symbolFreqs[rec_.title[i]]++;
+
+		return;
+	}
+
+	// update fields
+	//
 	uint32 c_field = 0;
 	uint32 start_pos = 0;
-	uint32 n_field = fields.size();
+	uint32 n_field = stats.fields.size();
 
 	uint32 k;
 	for (k = 0; k <= rec_.titleLen && c_field < n_field; ++k)
 	{
-		if (rec_.title[k] != fields[c_field].sep && k < rec_.titleLen)
+		stats.symbolFreqs[rec_.title[k]] += (k != rec_.titleLen);
+
+		if (rec_.title[k] != stats.fields[c_field].sep && k < rec_.titleLen)
 			continue;
 
-		Field& cur_field = fields[c_field];
+		Field& cur_field = stats.fields[c_field];
 
 		// calculate lengths
 		//
@@ -252,7 +266,7 @@ void TagModeler::UpdateFieldsStats(const FastqRecord &rec_)
 		}
 
 		cur_field.chars.resize(cur_field.max_len);
-		uint32 chars_len = MIN(MAX_FIELD_STAT_LEN, k-start_pos);
+		uint32 chars_len = MIN(Field::MAX_FIELD_STAT_LEN, k-start_pos);
 
 		// count freqs
 		//
@@ -260,9 +274,9 @@ void TagModeler::UpdateFieldsStats(const FastqRecord &rec_)
 		{
 			cur_field.chars[x][rec_.title[start_pos+x]]++;
 		}
-		for (uint32 x = MAX_FIELD_STAT_LEN; x < k-start_pos; ++x)
+		for (uint32 x = Field::MAX_FIELD_STAT_LEN; x < k-start_pos; ++x)
 		{
-			cur_field.chars[MAX_FIELD_STAT_LEN][rec_.title[start_pos+x]]++;
+			cur_field.chars[Field::MAX_FIELD_STAT_LEN][rec_.title[start_pos+x]]++;
 		}
 
 		if (cur_field.is_constant)
@@ -312,13 +326,13 @@ void TagModeler::UpdateFieldsStats(const FastqRecord &rec_)
 	//
 	if ((c_field != n_field) || (k != rec_.titleLen + 1U))
 	{
-		ASSERT(0);
+		stats.mixedFormatting = true;
 	}
 
 	recordCounter++;
 }
 
-void TagModeler::UpdateNumericField(Field &field_, int32 curValue_, int32 prevValue_)
+void TagAnalyzer::UpdateNumericField(Field &field_, int32 curValue_, int32 prevValue_)
 {
 	// gather value info
 	//
@@ -361,7 +375,7 @@ void TagModeler::UpdateNumericField(Field &field_, int32 curValue_, int32 prevVa
 		if (field_.num_values.size())
 		{
 			field_.num_values[curValue_]++;
-			if (field_.num_values.size() > MAX_NUM_VAL_HUF)
+			if (field_.num_values.size() > Field::MAX_NUM_VAL_HUF)
 			{
 				field_.num_values.clear();
 			}
@@ -422,7 +436,7 @@ void TagModeler::UpdateNumericField(Field &field_, int32 curValue_, int32 prevVa
 			if (field_.delta_values.size())
 			{
 				field_.delta_values[dvalue]++;
-				if (field_.delta_values.size() > MAX_NUM_VAL_HUF)
+				if (field_.delta_values.size() > Field::MAX_NUM_VAL_HUF)
 				{
 					field_.delta_values.clear();
 				}
@@ -444,17 +458,20 @@ void TagModeler::UpdateNumericField(Field &field_, int32 curValue_, int32 prevVa
 	}
 }
 
-void TagModeler::FinalizeFieldsStats()
+void TagAnalyzer::FinalizeFieldsStats()
 {
+	if (stats.mixedFormatting)
+		return;
+
 	// Find better encoding of numeric values
 	//
-	for (std::vector<Field>::iterator f = fields.begin(); f != fields.end(); ++f)
+	for (std::vector<Field>::iterator f = stats.fields.begin(); f != stats.fields.end(); ++f)
 	{
 		if (!f->is_numeric)
 		{
 			if (!f->is_constant)
 			{
-				f->chars.resize(MIN(f->max_len, MAX_FIELD_STAT_LEN+1));
+				f->chars.resize(MIN(f->max_len, Field::MAX_FIELD_STAT_LEN+1));
 				f->no_of_bits_per_len = core::bit_length(f->max_len - f->min_len);
 			}
 			continue;
@@ -518,13 +535,13 @@ void TagModeler::FinalizeFieldsStats()
 		{
 			f->numeric_scheme = Field::DeltaVar;
 			uint32 diff = (uint32)(f->max_delta - f->min_delta) + 1;
-			f->var_stat_encode = diff <= (int32)MAX_NUM_VAL_HUF && f->delta_values.size();
+			f->var_stat_encode = diff <= (int32)Field::MAX_NUM_VAL_HUF && f->delta_values.size();
 		}
 		else
 		{
 			f->numeric_scheme = Field::ValueVar;
 			uint32 diff = (uint32)(f->max_value - f->min_value) + 1;
-			f->var_stat_encode = diff <= (int32)MAX_NUM_VAL_HUF && f->num_values.size();
+			f->var_stat_encode = diff <= (int32)Field::MAX_NUM_VAL_HUF && f->num_values.size();
 		}
 
 		f->no_of_bits_per_num = core::bit_length(diff);
@@ -533,20 +550,30 @@ void TagModeler::FinalizeFieldsStats()
 	}
 }
 
-void TagModeler::StartEncoding(BitMemoryWriter& writer_)
+
+
+
+void TagTokenizerEncoder::StartEncoding(BitMemoryWriter& writer_, TagStats* stats_)
 {
+	ASSERT(stats == NULL);
+	ASSERT(stats_ != NULL);
+	ASSERT(!stats_->mixedFormatting);
+	stats = stats_;
+
 	StoreFields(writer_);
 
 	recordCounter = 0;
-	prevFieldValues.resize(fields.size(), 0);
+	prevFieldValues.resize(stats->fields.size(), 0);
 }
 
-void TagModeler::StoreFields(BitMemoryWriter &bit_stream)
+void TagTokenizerEncoder::StoreFields(BitMemoryWriter &bit_stream)
 {
-	byte fieldCount = fields.size();
+	ASSERT(!stats->mixedFormatting);
+
+	byte fieldCount = stats->fields.size();
 	bit_stream.PutByte(fieldCount);
 
-	for (std::vector<Field>::iterator f = fields.begin(); f != fields.end(); ++f)
+	for (std::vector<Field>::iterator f = stats->fields.begin(); f != stats->fields.end(); ++f)
 	{
 		bit_stream.PutByte(f->sep);				// <---+ put on flags (low 6 bits)
 		bit_stream.PutByte(f->is_constant);		// <-- use flags
@@ -636,9 +663,9 @@ void TagModeler::StoreFields(BitMemoryWriter &bit_stream)
 		}
 		bit_stream.FlushPartialWordBuffer();
 
-		f->Huffman_local.resize(MIN(f->max_len+1, MAX_FIELD_STAT_LEN+1));
+		f->Huffman_local.resize(MIN(f->max_len+1, Field::MAX_FIELD_STAT_LEN+1));
 
-		for (uint32 j = 0; j < MIN(f->max_len, MAX_FIELD_STAT_LEN); ++j)
+		for (uint32 j = 0; j < MIN(f->max_len, Field::MAX_FIELD_STAT_LEN); ++j)
 		{
 			f->Huffman_local[j] = NULL;
 			if (j >= f->len || !f->ham_mask[j])
@@ -652,12 +679,12 @@ void TagModeler::StoreFields(BitMemoryWriter &bit_stream)
 				huf->StoreTree(bit_stream);
 			}
 		}
-		if (f->max_len >= MAX_FIELD_STAT_LEN)
+		if (f->max_len >= Field::MAX_FIELD_STAT_LEN)
 		{
-			HuffmanEncoder* huf = f->Huffman_local[MAX_FIELD_STAT_LEN] = new HuffmanEncoder(Field::HUF_LOCAL_SIZE);
+			HuffmanEncoder* huf = f->Huffman_local[Field::MAX_FIELD_STAT_LEN] = new HuffmanEncoder(Field::HUF_LOCAL_SIZE);
 			for (uint32 k = 0; k < Field::HUF_LOCAL_SIZE; ++k)
 			{
-				huf->Insert(f->chars[(uchar) MAX_FIELD_STAT_LEN][k]);
+				huf->Insert(f->chars[(uchar) Field::MAX_FIELD_STAT_LEN][k]);
 			}
 			huf->Complete(true);
 			huf->StoreTree(bit_stream);
@@ -665,8 +692,10 @@ void TagModeler::StoreFields(BitMemoryWriter &bit_stream)
 	}
 }
 
-void TagModeler::EncodeNextFields(BitMemoryWriter &bit_stream, const FastqRecord &rec_)
+void TagTokenizerEncoder::EncodeNextFields(BitMemoryWriter &bit_stream, const FastqRecord &rec_)
 {
+	ASSERT(stats != NULL);
+
 	uint32 c_field = 0;
 	uint32 start_pos = 0;
 
@@ -674,8 +703,8 @@ void TagModeler::EncodeNextFields(BitMemoryWriter &bit_stream, const FastqRecord
 	//
 	for (uint32 k = 0; k <= rec_.titleLen; ++k)
 	{
-		ASSERT(c_field < fields.size());
-		Field &cur_field = fields[c_field];
+		ASSERT(c_field < stats->fields.size());
+		Field &cur_field = stats->fields[c_field];
 
 		if (rec_.title[k] != cur_field.sep && k < rec_.titleLen)
 			continue;
@@ -709,7 +738,7 @@ void TagModeler::EncodeNextFields(BitMemoryWriter &bit_stream, const FastqRecord
 			if (j >= cur_field.len || !cur_field.ham_mask[j])
 			{
 				uchar c = rec_.title[start_pos+j];
-				const HuffmanEncoder::Code* codes = cur_field.Huffman_local[MIN(j, MAX_FIELD_STAT_LEN)]->GetCodes();
+				const HuffmanEncoder::Code* codes = cur_field.Huffman_local[MIN(j, Field::MAX_FIELD_STAT_LEN)]->GetCodes();
 				bit_stream.PutBits(codes[c].code, codes[c].len);
 			}
 		}
@@ -721,7 +750,7 @@ void TagModeler::EncodeNextFields(BitMemoryWriter &bit_stream, const FastqRecord
 	recordCounter++;
 }
 
-void TagModeler::StoreNumericField(BitMemoryWriter &bit_stream, Field &field_, int32 curValue_, int32 prevValue_)
+void TagTokenizerEncoder::StoreNumericField(BitMemoryWriter &bit_stream, Field &field_, int32 curValue_, int32 prevValue_)
 {
 	if (recordCounter == 0)
 	{
@@ -844,31 +873,36 @@ void TagModeler::StoreNumericField(BitMemoryWriter &bit_stream, Field &field_, i
 	}
 }
 
-void TagModeler::FinishEncoding(BitMemoryWriter &writer_)
+void TagTokenizerEncoder::FinishEncoding(BitMemoryWriter &writer_)
 {
+	ASSERT(stats != NULL);
+	ASSERT(!stats->mixedFormatting);
+
+	stats = NULL;
+
 	writer_.FlushPartialWordBuffer();
 }
 
 
-void TagModeler::StartDecoding(BitMemoryReader &reader_)
+void TagTokenizerDecoder::StartDecoding(BitMemoryReader &reader_)
 {
 	ReadFields(reader_);
 
 	recordCounter = 0;
-	prevFieldValues.resize(fields.size(), 0);
+	prevFieldValues.resize(stats.fields.size(), 0);
 }
 
-void TagModeler::ReadFields(BitMemoryReader &bit_stream)
+void TagTokenizerDecoder::ReadFields(BitMemoryReader &bit_stream)
 {
 	uint32 n_field = bit_stream.GetByte();
 	ASSERT(n_field > 0);
 
-	fields.clear();
-	fields.resize(n_field);
+	stats.fields.clear();
+	stats.fields.resize(n_field);
 
 	for (uint32 i = 0; i < n_field; ++i)
 	{
-		Field& field = fields[i];
+		Field& field = stats.fields[i];
 		field.sep = bit_stream.GetByte();
 		field.is_constant = bit_stream.GetByte() != 0;
 
@@ -970,9 +1004,9 @@ void TagModeler::ReadFields(BitMemoryReader &bit_stream)
 		}
 		bit_stream.FlushInputWordBuffer();
 
-		field.Huffman_local.resize(MIN(field.max_len, MAX_FIELD_STAT_LEN+1));
+		field.Huffman_local.resize(MIN(field.max_len, Field::MAX_FIELD_STAT_LEN+1));
 
-		for (uint32 j = 0; j < MIN(field.max_len, MAX_FIELD_STAT_LEN); ++j)
+		for (uint32 j = 0; j < MIN(field.max_len, Field::MAX_FIELD_STAT_LEN); ++j)
 		{
 			field.Huffman_local[j] = NULL;
 			if (j >= field.len || !field.ham_mask[j])
@@ -981,21 +1015,21 @@ void TagModeler::ReadFields(BitMemoryReader &bit_stream)
 				field.Huffman_local[j]->LoadTree(bit_stream);
 			}
 		}
-		if (field.max_len >= MAX_FIELD_STAT_LEN)
+		if (field.max_len >= Field::MAX_FIELD_STAT_LEN)
 		{
-			field.Huffman_local[MAX_FIELD_STAT_LEN] = new HuffmanEncoder(Field::HUF_LOCAL_SIZE);
-			field.Huffman_local[MAX_FIELD_STAT_LEN]->LoadTree(bit_stream);
+			field.Huffman_local[Field::MAX_FIELD_STAT_LEN] = new HuffmanEncoder(Field::HUF_LOCAL_SIZE);
+			field.Huffman_local[Field::MAX_FIELD_STAT_LEN]->LoadTree(bit_stream);
 		}
 	}
 }
 
-void TagModeler::DecodeNextFields(BitMemoryReader &bit_stream, FastqRecord &rec_)
+void TagTokenizerDecoder::DecodeNextFields(BitMemoryReader &bit_stream, FastqRecord &rec_)
 {
-	uint32 n_fields = fields.size();
+	uint32 n_fields = stats.fields.size();
 
 	for (uint32 j = 0; j < n_fields; ++j)
 	{
-		Field &cur_field = fields[j];
+		Field &cur_field = stats.fields[j];
 		if (cur_field.is_constant)
 		{
 			std::copy(cur_field.data, cur_field.data + cur_field.len, rec_.title + rec_.titleLen);
@@ -1037,7 +1071,7 @@ void TagModeler::DecodeNextFields(BitMemoryReader &bit_stream, FastqRecord &rec_
 			}
 			else
 			{
-				HuffmanEncoder *cur_huf = cur_field.Huffman_local[MIN(k, MAX_FIELD_STAT_LEN)];
+				HuffmanEncoder *cur_huf = cur_field.Huffman_local[MIN(k, Field::MAX_FIELD_STAT_LEN)];
 
 				uint32 bit = bit_stream.GetBits(cur_huf->GetMinLen());
 				int32 h_tmp = cur_huf->DecodeFast(bit);
@@ -1060,7 +1094,7 @@ void TagModeler::DecodeNextFields(BitMemoryReader &bit_stream, FastqRecord &rec_
 	recordCounter++;
 }
 
-uint32 TagModeler::ReadNumericField(BitMemoryReader &bit_stream, Field &field_, int32 prevValue_)
+uint32 TagTokenizerDecoder::ReadNumericField(BitMemoryReader &bit_stream, Field &field_, int32 prevValue_)
 {
 	uint32 num_val = 0;
 	if (recordCounter == 0)
@@ -1173,10 +1207,146 @@ uint32 TagModeler::ReadNumericField(BitMemoryReader &bit_stream, Field &field_, 
 	return num_val;
 }
 
-void TagModeler::FinishDecoding(BitMemoryReader &reader_)
+void TagTokenizerDecoder::FinishDecoding(BitMemoryReader &reader_)
 {
 	reader_.FlushInputWordBuffer();
 }
+
+
+
+void TagRawEncoder::StartEncoding(BitMemoryWriter& writer_, TagStats* stats_)
+{
+	ASSERT(stats == NULL);
+	ASSERT(stats_->mixedFormatting);
+	ASSERT(encoder == NULL);
+
+	stats = stats_;
+
+	titleLenBits = core::bit_length(stats->maxTitleLen - stats->minTitleLen);
+	writer_.PutWord(stats->minTitleLen);
+	writer_.PutWord(stats->maxTitleLen);
+
+
+	// calculate stats and create huffman tree
+	//
+	std::fill(symbols, symbols + MaxSymbolCount, +EmptySymbol);
+	symbolCount = 0;
+
+	encoder = new HuffmanEncoder(MaxSymbolCount);
+
+	for (uint32 i = 0; i < MaxSymbolCount; ++i)
+	{
+		if (stats->symbolFreqs[i] > 0)
+		{
+			symbols[i] = symbolCount++;
+			encoder->Insert(stats->symbolFreqs[i]);
+		}
+	}
+
+	encoder->Complete();
+
+
+	// store symbols
+	//
+	for (uint32 i = 0; i < MaxSymbolCount; ++i)
+	{
+		writer_.PutBit(symbols[i] != EmptySymbol);
+	}
+	writer_.FlushPartialWordBuffer();
+
+	encoder->StoreTree(writer_);
+}
+
+void TagRawEncoder::EncodeNextFields(BitMemoryWriter &writer_, const FastqRecord &rec_)
+{
+	ASSERT(encoder != NULL);
+
+	if (titleLenBits > 0)
+		writer_.PutBits(rec_.titleLen - stats->minTitleLen, titleLenBits);
+
+	const HuffmanEncoder::Code* symbolCodes = encoder->GetCodes();
+	for (uint32 i = 0; i < rec_.titleLen; ++i)
+	{
+		const HuffmanEncoder::Code& code = symbolCodes[(int32)symbols[rec_.title[i]]];
+		writer_.PutBits(code.code, code.len);
+	}
+}
+
+void TagRawEncoder::FinishEncoding(BitMemoryWriter &writer_)
+{
+	ASSERT(encoder != NULL);
+
+	writer_.FlushPartialWordBuffer();
+
+	delete encoder;
+	encoder = NULL;
+	stats = NULL;
+}
+
+
+
+void TagRawDecoder::StartDecoding(BitMemoryReader &reader_)
+{
+	ASSERT(encoder == NULL);
+
+	// read lengths
+	//
+	minTitleLen = reader_.GetWord();
+	maxTitleLen = reader_.GetWord();
+	titleLenBits = core::bit_length(maxTitleLen - minTitleLen);
+
+	// read symbols and huffman tree
+	//
+	symbolCount = 0;
+	std::fill(symbols, symbols + MaxSymbolCount, +EmptySymbol);
+	for (uint32 i = 0; i < MaxSymbolCount; ++i)
+	{
+		if (reader_.GetBit())
+		{
+			symbols[symbolCount++] = i;
+		}
+	}
+
+	ASSERT(symbolCount > 0);
+
+	encoder = new HuffmanEncoder(symbolCount);
+	encoder->LoadTree(reader_);
+}
+
+void TagRawDecoder::DecodeNextFields(BitMemoryReader &reader_, FastqRecord &rec_)
+{
+	ASSERT(encoder != NULL);
+
+	if (titleLenBits > 0)
+		rec_.titleLen = reader_.GetBits(titleLenBits) + minTitleLen;
+	else
+		rec_.titleLen = maxTitleLen;
+
+	for (uint32 i = 0; i < rec_.titleLen; ++i)
+	{
+		uint32 bit = reader_.GetBits(encoder->GetMinLen());
+		int32 sidx = encoder->DecodeFast(bit);
+		while (sidx < 0)
+		{
+			bit = reader_.GetBit();
+			sidx = encoder->Decode(bit);
+		};
+
+		rec_.title[i] = symbols[sidx];
+	}
+}
+
+void TagRawDecoder::FinishDecoding(BitMemoryReader &reader_)
+{
+	ASSERT(encoder != NULL);
+
+	reader_.FlushInputWordBuffer();
+
+	delete encoder;
+	encoder = NULL;
+}
+
+
 
 
 } // namespace comp
