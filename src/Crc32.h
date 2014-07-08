@@ -26,7 +26,7 @@ class Crc32Hasher	// CRC32 LSB
 private:
 	uint32 polynomial;
 	uint32 crc;
-	uchar lookup_table[256];
+	uint32 lookup_table[256];
 
 	void FillLookupTable()
 	{
@@ -45,7 +45,7 @@ private:
 					h >>= 1;
 				}
 			}
-			lookup_table[i] = (uchar)h;
+			lookup_table[i] = h;
 		}
 	}
 
