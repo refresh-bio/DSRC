@@ -199,6 +199,7 @@ class HuffmanEncoder;
 namespace core
 {
 
+class Buffer;
 class BitMemoryReader;
 class BitMemoryWriter;
 class ErrorHandler;

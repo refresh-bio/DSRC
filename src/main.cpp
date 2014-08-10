@@ -15,7 +15,7 @@
 #include "DsrcOperator.h"
 #include "utils.h"
 
-const std::string version = "2.00 @ 06.05.2014";
+const std::string version = "2.01 @ 28.05.2014";
 
 using namespace dsrc;
 using namespace dsrc::core;

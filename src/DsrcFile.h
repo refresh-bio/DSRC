@@ -33,7 +33,7 @@ struct DsrcFileHeader
 
 	static const uint32 VersionMajor = 2;
 	static const uint32 VersionMinor = 0;
-	static const uint32 VersionRev = 0;
+	static const uint32 VersionRev = 1;
 
 	uchar	dummyByte;
 	uchar	versionMajor;

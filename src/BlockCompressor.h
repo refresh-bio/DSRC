@@ -76,7 +76,8 @@ protected:
 	enum FastqBlockFlags
 	{
 		FLAG_DELTA_CONSTANT			= BIT(0),
-		FLAG_VARIABLE_LENGTH		= BIT(1)
+		FLAG_VARIABLE_LENGTH		= BIT(1),
+		FLAG_MIXED_FIELD_FORMATTING	= BIT(2)		// this should be handled by TagModelerProxy*
 	};
 
 	const fq::FastqDatasetType datasetType;
@@ -90,7 +91,6 @@ protected:
 	TagModeler tagModeler;
 	IDnaModelerProxy* dnaModeler;
 	IQualityModeler* qualityModeler;
-
 
 	void ParseRecords(const fq::FastqDataChunk& chunk_);
 

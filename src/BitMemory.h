@@ -135,7 +135,7 @@ public:
 
 	void GetBytes(uchar *data, uint32 n_bytes)
 	{
-		ASSERT(position + n_bytes < size);
+		ASSERT(position + n_bytes <= size);
 
 		std::copy(memory + position, memory + position + n_bytes, data);
 		position += n_bytes;
