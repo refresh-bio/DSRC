@@ -1,12 +1,12 @@
-@1 CLIP IS AGTCCCGTAC AT END
+@1 a b c; ; ;=<
 ATATGCTACGTTTGTGACCTAGTCCCGTAC
 +
 hhhhhhhhhhhhhhhhhhhhhhhffgffaa
-@2 CLIP AGTCCCGTAC + AAAAs
+@2 a b c 
 ATGTTCGTATATGAGCAGTCCCGTACAAAA
 +
 hhbhhhhhhhhhhhhhhhhhhhhfffffhh
-@3 CLIP JUST AGTCC
+@3 a b c
 TATAGCCTCTAGCTTGACTCTAGCTAGTCC
 +
 hhhhhhhhhhhhhhhhhhhhhhfffffhhh
