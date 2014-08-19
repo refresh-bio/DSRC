@@ -10,6 +10,7 @@ QMAKE_CXXFLAGS += -DUSE_BOOST_THREAD
 
 LIBS += -lpthread
 LIBS += -lboost_thread
+LIBS += -lboost_system
 
 INCLUDEPATH += /usr/include/python2.7
 
