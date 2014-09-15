@@ -96,6 +96,11 @@ HuffmanEncoder::Code* HuffmanEncoder::Complete(bool compact)
 	if (!n_symbols)
 		return NULL;
 
+	// Handle the special case - when maximum no. of symbols == 2
+	// but the after compacting the actual the size equals 1 or 0 (*)
+	if (n_symbols < 2)
+		n_symbols = 2;
+
 	// Make heap of symbols
 	std::make_heap(heap, heap+n_symbols);
 	
@@ -119,9 +124,17 @@ HuffmanEncoder::Code* HuffmanEncoder::Complete(bool compact)
 	// Remove symbols with 0 frequency
 	if (compact)
 	{
-		while (heap_size > 2 && heap[0].frequency == 0)
+		// (*) special case support
+		if (heap_size == 2 && heap[0].frequency == 0)
 		{
-			std::pop_heap(heap, heap+heap_size--);
+			heap[0].frequency = 1;
+			if (heap[1].frequency == 0)
+				heap[1].frequency = 1;
+		}
+		else
+		{
+			while (heap_size > 2 && heap[0].frequency == 0)
+				std::pop_heap(heap, heap+heap_size--);
 		}
 	}
 
