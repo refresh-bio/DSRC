@@ -12,8 +12,6 @@
 
 #include "../include/dsrc/Globals.h"
 
-#include <vector>
-#include <map>
 #include <string>
 
 namespace dsrc
@@ -129,6 +127,12 @@ inline bool extend_string_to(uchar *&str, uint32 &size, uint32 new_size)
 	str = p;
 
 	return true;
+}
+
+inline bool ends_with(const std::string& str_, const std::string& suff_)
+{
+	return str_.size() >= suff_.size() &&
+			str_.compare(str_.size() - suff_.size(), suff_.size(), suff_) == 0;
 }
 
 inline uint32 int_log(uint32 x, uint32 base)

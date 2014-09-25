@@ -11,7 +11,7 @@
 
 #include <iostream>
 
-  #ifdef USE_BOOST_THREAD
+#ifdef USE_BOOST_THREAD
 #include <boost/thread.hpp>
 namespace th = boost;
 #else

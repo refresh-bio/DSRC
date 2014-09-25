@@ -137,7 +137,7 @@ bool FastqParser::Analyze(const FastqDataChunk& chunk_, FastqDatasetType& header
 	return recCount > 1;
 }
 
-uint64 FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_)
+uint64 FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_, StreamsInfo& streamsInfo_)
 {
 	ASSERT(buffer == NULL);
 
@@ -145,9 +145,15 @@ uint64 FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRec
 	memoryPos = 0;
 	memorySize = chunk_.size;
 
+	streamsInfo_.Clear();
 	rec_count_ = 0;
 	while (memoryPos < memorySize && ReadNextRecord(records_[rec_count_]))
 	{
+		const FastqRecord& rec = records_[rec_count_];
+		streamsInfo_.sizes[StreamsInfo::TagStream] += rec.titleLen;
+		streamsInfo_.sizes[StreamsInfo::DnaStream] += rec.sequenceLen;
+		streamsInfo_.sizes[StreamsInfo::QualityStream] += rec.qualityLen;
+
 		rec_count_++;
 		if (records_.size() < rec_count_ + 1)
 			records_.resize(records_.size() + REC_EXTENSION_FACTOR(records_.size()));
@@ -158,7 +164,8 @@ uint64 FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRec
 }
 
 
-uint64 FastqParserExt::ParseFrom(const FastqDataChunk &chunk_, std::vector<FastqRecord> &records_, uint64 &rec_count_, uint64 tagPreserveFlags_)
+uint64 FastqParserExt::ParseFrom(const FastqDataChunk &chunk_, std::vector<FastqRecord> &records_, uint64 &rec_count_,
+								 StreamsInfo& streamsInfo_, uint64 tagPreserveFlags_)
 {
 	ASSERT(buffer == NULL);
 	ASSERT(tagPreserveFlags_ != 0);
@@ -173,6 +180,11 @@ uint64 FastqParserExt::ParseFrom(const FastqDataChunk &chunk_, std::vector<Fastq
 	rec_count_ = 0;
 	while (memoryPos < memorySize && ReadNextRecord(records_[rec_count_], tagBuffer, tagPreserveFlags_))
 	{
+		const FastqRecord& rec = records_[rec_count_];
+		streamsInfo_.sizes[StreamsInfo::TagStream] += rec.titleLen;
+		streamsInfo_.sizes[StreamsInfo::DnaStream] += rec.sequenceLen;
+		streamsInfo_.sizes[StreamsInfo::QualityStream] += rec.qualityLen;
+
 		rec_count_++;
 		if (records_.size() < rec_count_ + 1)
 			records_.resize(records_.size() + REC_EXTENSION_FACTOR(records_.size()));

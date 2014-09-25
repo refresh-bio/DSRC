@@ -63,6 +63,12 @@ void DsrcFileWriter::WriteNextChunk(const DsrcDataChunk* block_)
 
 	fileStream->Write(block_->data.Pointer(), block_->size);
 	fileFooter.blockSizes.push_back(block_->size);
+
+	for (uint32 i = 0; i < fq::StreamsInfo::StreamCount; ++i)
+	{
+		fastqStreamInfo.sizes[i] += block_->rawStreamsInfo.sizes[i];
+		dsrcStreamInfo.sizes[i] += block_->compStreamsInfo.sizes[i];
+	}
 	currentBlockId++;
 }
 

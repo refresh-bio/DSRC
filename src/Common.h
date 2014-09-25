@@ -24,7 +24,6 @@
 #define MAX(x,y)						((x) >= (y) ? (x) : (y))
 #define ABS(x)							((x) >=  0  ? (x) : -(x))
 #define SIGN(x)							((x) >=  0  ?  1  : -1)
-#define DUMMY_BYTE						0xBD
 #define REC_EXTENSION_FACTOR(size)		( ((size) / 4 > 1024) ? ((size) / 4) : 1024 )
 #define MEM_EXTENSION_FACTOR(size)		REC_EXTENSION_FACTOR(size)
 
@@ -40,11 +39,6 @@
 #include <string>
 
 
-#if defined(DEBUG) || defined(_DEBUG)
-#	define D_COMPUTE_RECORDS_CRC_PER_BLOCK	1
-#else
-#	define D_COMPUTE_RECORDS_CRC_PER_BLOCK	0
-#endif
 
 #define COMPILE_TIME_ASSERT(COND, MSG) typedef char static_assertion_##MSG[(!!(COND))*2-1]
 #define COMPILE_TIME_ASSERT1(X, L) COMPILE_TIME_ASSERT(X,static_assertion_at_line_##L)
@@ -82,6 +76,31 @@ struct FastqDatasetType
 		ds.plusRepetition = false;
 		ds.colorSpace = false;
 		return ds;
+	}
+};
+
+struct StreamsInfo
+{
+	enum StreamName
+	{
+		MetaStream = 0,
+		TagStream,
+		DnaStream,
+		QualityStream,
+
+		StreamCount = 4
+	};
+
+	uint64 sizes[4];
+
+	StreamsInfo()
+	{
+		Clear();
+	}
+
+	void Clear()
+	{
+		std::fill(sizes, sizes + StreamCount, 0);
 	}
 };
 
@@ -156,33 +175,22 @@ struct InputParameters
 
 	InputParameters()
 		:	qualityOffset(DefaultQualityOffset)
-		,	dnaCompressionLevel(0)
-		,	qualityCompressionLevel(0)
+		,	dnaCompressionLevel(DefaultDnaCompressionLevel)
+		,	qualityCompressionLevel(DefaultQualityCompressionLevel)
 		,	threadNum(DefaultProcessingThreadNum)
 		,	tagPreserveFlags(DefaultTagPreserveFlags)
 		,	fastqBufferSizeMB(DefaultFastqBufferSizeMB)
-		,	lossyCompression(false)
-		,	calculateCrc32(false)
+		,	lossyCompression(DefaultLossyCompressionMode)
+		,	calculateCrc32(DefaultCalculateCrc32)
 		,	useFastqStdIo(false)
 	{}
 
 	static InputParameters Default()
 	{
 		InputParameters args;
-		args.qualityOffset = DefaultQualityOffset;
-		args.dnaCompressionLevel = DefaultDnaCompressionLevel;
-		args.qualityCompressionLevel = DefaultQualityCompressionLevel;
-		args.threadNum = DefaultProcessingThreadNum;
-		args.tagPreserveFlags = DefaultTagPreserveFlags;
-		args.fastqBufferSizeMB = DefaultFastqBufferSizeMB;
-
-		args.lossyCompression = DefaultLossyCompressionMode;
-		args.calculateCrc32 = DefaultCalculateCrc32;
-		args.useFastqStdIo = false;
 		return args;
 	}
 };
-
 
 struct Field;
 
@@ -190,8 +198,9 @@ struct DnaStats;
 struct QualityStats;
 
 class BlockCompressor;
-
 class HuffmanEncoder;
+
+class DsrcDataChunk;
 
 } // namespace comp
 

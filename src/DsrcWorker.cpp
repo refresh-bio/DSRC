@@ -45,7 +45,7 @@ void DsrcCompressor::Process()
 
 		BitMemoryWriter bitMemory(dsrcData->data);
 
-		superblock.Store(bitMemory, *fqChunk);
+		superblock.Store(bitMemory, dsrcData->rawStreamsInfo, dsrcData->compStreamsInfo, *fqChunk);
 
 		bitMemory.Flush();
 		dsrcData->size = bitMemory.Position();

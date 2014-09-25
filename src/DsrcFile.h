@@ -23,8 +23,6 @@ namespace dsrc
 namespace comp
 {
 
-typedef core::DataChunk DsrcDataChunk;
-
 struct DsrcFileHeader
 {
 	static const uchar DummyByteValue			= 0xAA;
@@ -33,7 +31,7 @@ struct DsrcFileHeader
 
 	static const uint32 VersionMajor = 2;
 	static const uint32 VersionMinor = 0;
-	static const uint32 VersionRev = 1;
+	static const uint32 VersionRev = 2;
 
 	uchar	dummyByte;
 	uchar	versionMajor;
@@ -79,11 +77,14 @@ struct DsrcFileFooter
 
 class DsrcFileWriter
 {
-	core::FileStreamWriterExt*	fileStream;
+	core::FileStreamWriterExt* fileStream;
 	DsrcFileHeader fileHeader;
 	DsrcFileFooter fileFooter;
 
 	uint64 currentBlockId;
+
+	fq::StreamsInfo fastqStreamInfo;
+	fq::StreamsInfo dsrcStreamInfo;
 
 	void WriteFileHeader();
 	void WriteFileFooter();
@@ -103,9 +104,18 @@ public:
 		fileFooter.compSettings = settings_;
 	}
 
-
 	void WriteNextChunk(const DsrcDataChunk* block_);
 	void FinishCompress();
+
+	const fq::StreamsInfo& GetFastqStreamInfo() const
+	{
+		return fastqStreamInfo;
+	}
+
+	const fq::StreamsInfo& GetDsrcStreamInfo() const
+	{
+		return dsrcStreamInfo;
+	}
 };
 
 
