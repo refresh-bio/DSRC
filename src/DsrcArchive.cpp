@@ -11,6 +11,7 @@
 
 #include "BlockCompressorExt.h"
 #include "DsrcFile.h"
+#include "DsrcIo.h"
 
 namespace dsrc
 {

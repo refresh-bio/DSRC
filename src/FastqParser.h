@@ -26,7 +26,8 @@ class FastqParser
 public:
 	FastqParser();
 
-	uint64 ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_);
+	uint64 ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_,
+					 uint64& rec_count_, StreamsInfo& streamsInfo_);
 	bool Analyze(const FastqDataChunk& chunk_, FastqDatasetType& header_, bool estimateQualityOffset_ = false);
 
 protected:
@@ -153,7 +154,8 @@ public:
 	{}
 
 	// this is a bad design, but trying to avoid virtual function call
-	uint64 ParseFrom(const FastqDataChunk &chunk_, std::vector<FastqRecord> &records_, uint64 &rec_count_, uint64 tagPreserveFlags_);
+	uint64 ParseFrom(const FastqDataChunk &chunk_, std::vector<FastqRecord> &records_, uint64 &rec_count_,
+					 StreamsInfo& streamsInfo_, uint64 tagPreserveFlags_);
 	bool ReadNextRecord(FastqRecord& rec_, uchar* tagBuffer_, uint64 tagPreserveFlags_);
 
 private:

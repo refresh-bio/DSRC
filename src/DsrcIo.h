@@ -25,7 +25,24 @@ namespace dsrc
 
 namespace comp
 {
-typedef core::DataChunk DsrcDataChunk;
+
+struct DsrcDataChunk : public core::DataChunk
+{
+	fq::StreamsInfo rawStreamsInfo;
+	fq::StreamsInfo compStreamsInfo;
+
+	DsrcDataChunk(uint64 bufferSize_ = core::DataChunk::DefaultBufferSize)
+		:	core::DataChunk(bufferSize_)
+	{}
+
+	void Reset()
+	{
+		core::DataChunk::Reset();
+		rawStreamsInfo.Clear();
+		compStreamsInfo.Clear();
+	}
+};
+
 typedef core::TDataQueue<DsrcDataChunk> DsrcDataQueue;
 typedef core::TDataPool<DsrcDataChunk> DsrcDataPool;
 

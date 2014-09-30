@@ -15,7 +15,7 @@
 #include "DsrcOperator.h"
 #include "utils.h"
 
-const std::string version = "2.01 @ 11.08.2014";
+const std::string version = "2.02 @ 30.09.2014";
 
 using namespace dsrc;
 using namespace dsrc::core;
@@ -33,6 +33,11 @@ struct InputArguments
 
 	ModeEnum mode;
 	InputParameters params;
+	bool verboseMode;
+
+	InputArguments()
+		:	verboseMode(false)
+	{}
 };
 
 void message();
@@ -76,6 +81,11 @@ int main(int argc_, const char* argv_[])
 		return -1;
 	}
 
+	if (args.verboseMode && op->GetLog().length() > 0)
+	{
+		std::cerr << op->GetLog();
+	}
+
 	delete op;
 	return 0;
 }
@@ -105,6 +115,7 @@ void message()
 	std::cerr << "both compression and decompression options:\n";
 	std::cerr << "\t-t<n>\t: processing threads number, default (available h/w threads): " << IDsrcOperator::AvailableHardwareThreadsNum << ", max: 64" << '\n';
 	std::cerr << "\t-s\t: use stdin/stdout for reading/writing raw FASTQ data\n\n";
+	std::cerr << "\t-v\t: verbose mode, default: false\n";
 
 	std::cerr << "usage examples:\n";
 	std::cerr << "* compress SRR001471.fastq file saving DSRC archive to SRR001471.dsrc:\n";
@@ -130,7 +141,8 @@ bool parse_arguments(int argc_, const char* argv_[], InputArguments& outArgs_)
 
 	if (argv_[1][0] != 'c' && argv_[1][0] != 'd')
 	{
-		std::cerr << "Error: invalid Quality offset mode specified\n";
+		std::cerr << "Error: invalid mode specified\n";
+		return false;
 	}
 
 	outArgs_.mode = (argv_[1][0] == 'c') ? InputArguments::CompressMode : InputArguments::DecompressMode;
@@ -205,12 +217,16 @@ bool parse_arguments(int argc_, const char* argv_[], InputArguments& outArgs_)
 
 				break;
 			}
+
+			case 'v':	outArgs_.verboseMode = true;		break;
 		}
 	}
 
 
-	// check params
+	// parse input/output file
 	//
+	pars.inputFilename.clear();
+	pars.outputFilename.clear();
 	if (!pars.useFastqStdIo)
 	{
 		pars.inputFilename = argv_[argc_-2];
@@ -222,6 +238,39 @@ bool parse_arguments(int argc_, const char* argv_[], InputArguments& outArgs_)
 			pars.outputFilename = argv_[argc_-1];
 		else
 			pars.inputFilename = argv_[argc_-1];
+	}
+
+
+	// check params
+	//
+	if (pars.inputFilename == pars.outputFilename)
+	{
+		std::cerr << "Error: input and output filenames are the same\n";
+		return false;
+	}
+
+	if (outArgs_.verboseMode)
+	{
+		std::string* fastqFilename = NULL;
+		std::string* dsrcFilename = NULL;
+		if (outArgs_.mode == InputArguments::CompressMode)
+		{
+			if (!pars.useFastqStdIo)
+				fastqFilename = &pars.inputFilename;
+			dsrcFilename = &pars.outputFilename;
+		}
+		else
+		{
+			if (!pars.useFastqStdIo)
+				fastqFilename = &pars.outputFilename;
+			dsrcFilename = &pars.inputFilename;
+		}
+
+		if (fastqFilename != NULL && !ends_with(*fastqFilename, ".fastq"))
+			std::cerr << "Warning: passing a FASTQ file without '.fastq' extension\n";
+
+		if (dsrcFilename != NULL && !ends_with(*dsrcFilename, ".dsrc"))
+			std::cerr << "Warning: passing a DSRC file without '.dsrc' extension\n";
 	}
 
 	if (pars.qualityOffset != fq::FastqDatasetType::AutoQualityOffset && !(pars.qualityOffset >= 33 && pars.qualityOffset <= 64) )
@@ -242,7 +291,7 @@ bool parse_arguments(int argc_, const char* argv_[], InputArguments& outArgs_)
 		return false;
 	}
 
-	if (pars.threadNum == 0 || pars.threadNum > 64)
+	if (pars.threadNum == 0 || pars.threadNum > 64)								// limit to 64 ATM ;)
 	{
 		std::cerr << "Error: invalid thread number specified [1-64]\n";
 		return false;

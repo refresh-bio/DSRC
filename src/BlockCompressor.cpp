@@ -109,25 +109,31 @@ void BlockCompressor::Reset()
 }
 
 
-void BlockCompressor::ParseRecords(const FastqDataChunk& chunk_)
+void BlockCompressor::ParseRecords(const FastqDataChunk& chunk_, StreamsInfo& streamInfo_)
 {
 	if (compSettings.tagPreserveFlags != 0)
 	{
 		FastqParserExt parser;
-		uint64 size = parser.ParseFrom(chunk_, records, chunkHeader.recordsCount, compSettings.tagPreserveFlags);
+		uint64 size = parser.ParseFrom(chunk_, records, chunkHeader.recordsCount,
+									   streamInfo_, compSettings.tagPreserveFlags);
 		ASSERT(size <= chunk_.size);
 		chunkHeader.chunkSize = size;
 	}
 	else
 	{
 		FastqParser parser;
-		uint64 size = parser.ParseFrom(chunk_, records, chunkHeader.recordsCount);
+		uint64 size = parser.ParseFrom(chunk_, records, chunkHeader.recordsCount, streamInfo_);
 		ASSERT(size <= chunk_.size);
 		chunkHeader.chunkSize = size;
 	}
 
 	ASSERT(chunkHeader.recordsCount > 0);
 	ASSERT(records.size() >= chunkHeader.recordsCount);
+	const uint64 rawStreamSize = streamInfo_.sizes[StreamsInfo::TagStream]
+							   + streamInfo_.sizes[StreamsInfo::DnaStream]
+							   + streamInfo_.sizes[StreamsInfo::QualityStream]
+							   + chunkHeader.recordsCount * 5 - 1;		// add newlines and pluses
+	ASSERT(chunkHeader.chunkSize >= rawStreamSize);
 }
 
 
@@ -199,33 +205,55 @@ void BlockCompressor::AnalyzeMetaData(const DnaStats& , const QualityStats& qSta
 }
 
 
-void BlockCompressor::Store(BitMemoryWriter &memory_, const FastqDataChunk &chunk_)
+void BlockCompressor::Store(BitMemoryWriter &memory_, StreamsInfo& rawStreamInfo_, StreamsInfo& compStreamInfo_,
+							const FastqDataChunk &chunk_)
 {
-	ParseRecords(chunk_);
+	ParseRecords(chunk_, rawStreamInfo_);
 
 	PreprocessRecords(chunkHeader.checksumFlags);
 
 	AnalyzeRecords();
 
-	StoreRecords(memory_);
+	StoreRecords(memory_, compStreamInfo_);
 
 	Reset();
 }
 
 
-void BlockCompressor::StoreRecords(BitMemoryWriter &memory_)
+void BlockCompressor::StoreRecords(BitMemoryWriter &memory_, StreamsInfo& streamInfo_)
 {
+	uint64 pos = memory_.Position();
+
+	// store meta data
+	//
 	CONTROL_CHECK_W(memory_);
 	StoreMetaData(memory_);
 
+	streamInfo_.sizes[StreamsInfo::MetaStream] = memory_.Position() - pos;
+	pos = memory_.Position();
+
+	// store tags
+	//
 	CONTROL_CHECK_W(memory_);
 	StoreTags(memory_);
 
+	streamInfo_.sizes[StreamsInfo::TagStream] = memory_.Position() - pos;
+	pos = memory_.Position();
+
+	// store quality
+	//
 	CONTROL_CHECK_W(memory_);
 	StoreQuality(memory_);
 
+	streamInfo_.sizes[StreamsInfo::QualityStream] = memory_.Position() - pos;
+	pos = memory_.Position();
+
+	// store dna
+	//
 	CONTROL_CHECK_W(memory_);
 	StoreDNA(memory_);
+
+	streamInfo_.sizes[StreamsInfo::DnaStream] = memory_.Position() - pos;
 
 	CONTROL_CHECK_W(memory_);
 }

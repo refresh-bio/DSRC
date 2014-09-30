@@ -47,12 +47,28 @@ public:
 		errorMessage.clear();
 	}
 
+	const std::string& GetLog() const
+	{
+		return logMessage;
+	}
+
+	void ClearLog()
+	{
+		logMessage.clear();
+	}
+
 protected:
 	std::string errorMessage;
+	std::string logMessage;
 
 	void AddError(const std::string& err_)
 	{
 		errorMessage += "Error: " + err_ + '\n';
+	}
+
+	void AddLog(const std::string& log_)
+	{
+		logMessage += log_ + '\n';
 	}
 
 	static CompressionSettings GetCompressionSettings(const InputParameters& args_)

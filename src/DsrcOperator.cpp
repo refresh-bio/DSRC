@@ -100,7 +100,7 @@ bool DsrcCompressorST::Process(const InputParameters &args_)
 
 		do
 		{
-			superblock.Store(bitMemory, *fastqChunk);
+			superblock.Store(bitMemory, dsrcChunk->rawStreamsInfo, dsrcChunk->compStreamsInfo, *fastqChunk);
 
 			bitMemory.Flush();
 			dsrcChunk->size = bitMemory.Position();
@@ -127,6 +127,22 @@ bool DsrcCompressorST::Process(const InputParameters &args_)
 
 		reader->Close();
 		writer->FinishCompress();
+
+
+		// set log
+		//
+		fq::StreamsInfo rawSize = writer->GetFastqStreamInfo();
+		fq::StreamsInfo compSize = writer->GetDsrcStreamInfo();
+
+		std::ostringstream ss;
+		ss << "Compressed streams sizes (in bytes)\n";
+		ss << "TAG: " << std::setw(16) << compSize.sizes[fq::StreamsInfo::MetaStream] + compSize.sizes[fq::StreamsInfo::TagStream]
+					  << " / " << std::setw(16) << rawSize.sizes[fq::StreamsInfo::TagStream] << '\n';
+		ss << "DNA: " << std::setw(16) << compSize.sizes[fq::StreamsInfo::DnaStream]
+					  << " / " << std::setw(16) << rawSize.sizes[fq::StreamsInfo::DnaStream] << '\n';
+		ss << "QUA: " << std::setw(16) << compSize.sizes[fq::StreamsInfo::QualityStream]
+					  << " / " << std::setw(16) << rawSize.sizes[fq::StreamsInfo::QualityStream] << '\n';
+		AddLog(ss.str());
 	}
 
 	// make reusable
@@ -337,6 +353,22 @@ bool DsrcCompressorMT::Process(const InputParameters &args_)
 
 		fileReader->Close();
 		fileWriter->FinishCompress();
+
+
+		// set log
+		//
+		fq::StreamsInfo rawSize = fileWriter->GetFastqStreamInfo();
+		fq::StreamsInfo compSize = fileWriter->GetDsrcStreamInfo();
+
+		std::ostringstream ss;
+		ss << "Compressed streams sizes (in bytes)\n";
+		ss << "TAG: " << std::setw(16) << compSize.sizes[fq::StreamsInfo::MetaStream] + compSize.sizes[fq::StreamsInfo::TagStream]
+					  << " / " << std::setw(16) << rawSize.sizes[fq::StreamsInfo::TagStream] << '\n';
+		ss << "DNA: " << std::setw(16) << compSize.sizes[fq::StreamsInfo::DnaStream]
+					  << " / " << std::setw(16) << rawSize.sizes[fq::StreamsInfo::DnaStream] << '\n';
+		ss << "QUA: " << std::setw(16) << compSize.sizes[fq::StreamsInfo::QualityStream]
+					  << " / " << std::setw(16) << rawSize.sizes[fq::StreamsInfo::QualityStream] << '\n';
+		AddLog(ss.str());
 	}
 
 	TFree(dataWriter);

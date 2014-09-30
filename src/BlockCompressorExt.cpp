@@ -36,7 +36,8 @@ void BlockCompressorExt::Flush(BitMemoryWriter &memory_)
 
 	AnalyzeRecords();
 
-	StoreRecords(memory_);
+	fq::StreamsInfo info;
+	StoreRecords(memory_, info);
 
 	Reset();
 	//

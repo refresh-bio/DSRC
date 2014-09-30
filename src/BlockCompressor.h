@@ -66,7 +66,7 @@ public:
 	BlockCompressor(const fq::FastqDatasetType& type_, const CompressionSettings& settings_);
 	virtual ~BlockCompressor();
 	
-	void Store(core::BitMemoryWriter &memory_, const fq::FastqDataChunk& chunk_);
+	void Store(core::BitMemoryWriter &memory_, fq::StreamsInfo& rawStreamsInfo_, fq::StreamsInfo& compStreamsInfo_, const fq::FastqDataChunk& chunk_);
 	void Read(core::BitMemoryReader &memory_, fq::FastqDataChunk& chunk_);
 	bool VerifyChecksum(core::BitMemoryReader &memory_, fq::FastqDataChunk& chunk_);
 
@@ -92,7 +92,7 @@ protected:
 	IDnaModelerProxy* dnaModeler;
 	IQualityModeler* qualityModeler;
 
-	void ParseRecords(const fq::FastqDataChunk& chunk_);
+	void ParseRecords(const fq::FastqDataChunk& chunk_, fq::StreamsInfo& streamSizes_);
 
 	void PreprocessRecords(uint32 checksumFlags_ = fq::FastqChecksum::CALC_NONE);
 	void PostprocessRecords(uint32 checksumFlags_ = fq::FastqChecksum::CALC_NONE);
@@ -100,7 +100,7 @@ protected:
 	void AnalyzeRecords();
 	void AnalyzeMetaData(const DnaStats& dnaStats_, const QualityStats& qStats_, const ColorSpaceStats& csStats_);
 
-	void StoreRecords(core::BitMemoryWriter &memory_);
+	void StoreRecords(core::BitMemoryWriter &memory_, fq::StreamsInfo& streamInfo_);
 	void ReadRecords(core::BitMemoryReader &memory_, fq::FastqDataChunk& chunk_);
 
 	void StoreMetaData(core::BitMemoryWriter &memory_);
