@@ -249,7 +249,7 @@ bool parse_arguments(int argc_, const char* argv_[], InputArguments& outArgs_)
 		return false;
 	}
 
-	if (outArgs_.verboseMode)
+	//if (outArgs_.verboseMode)
 	{
 		std::string* fastqFilename = NULL;
 		std::string* dsrcFilename = NULL;
