@@ -1,7 +1,12 @@
+30.09.2014
+DSRC 2.0.2 release.
+- fixed very rare bug in quality encoding
+- added verbose mode (-v) for displaying additional information (ATM just streams sizes)
+
 11.08.2014
-DSRC 2.0.1 release
+DSRC 2.0.1 release.
 - updated tag modelling routines, fixing a bug when compressing FASTQ blocks varying in tag fields description characteristics
-- fixed CRC32 checksum geneartion (thanks to CanoeFZH)
+- fixed CRC32 checksum generation (thanks to CanoeFZH)
 
 06.05.2014
 Updated the help message with usage examples and removed "RC" from version string.
