@@ -43,7 +43,7 @@ struct ColorSpaceStats
 
 struct DnaStats
 {
-	static const uint32 MaxSymbolCount = 20;
+	static const uint32 MaxSymbolCount = 24;
 	static const uint32 EmptySymbol = 255;
 
 	uint32 symbolCount;

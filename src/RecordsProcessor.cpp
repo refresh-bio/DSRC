@@ -204,6 +204,12 @@ LosslessRecordsProcessor::LosslessRecordsProcessor(uint32 qualityOffset_, bool c
 	dnaToIndexTable[(int32)'U'] = 16;		dnaFromIndexTable[16] = 'U';
 	dnaToIndexTable[(int32)'.'] = 17;		dnaFromIndexTable[17] = '.';
 	dnaToIndexTable[(int32)'-'] = 18;		dnaFromIndexTable[18] = '-';
+	// lowercase bases - e.g. masked regions from assembly
+	dnaToIndexTable[(int32)'a'] = 19;		dnaFromIndexTable[19] = 'a';
+	dnaToIndexTable[(int32)'g'] = 20;		dnaFromIndexTable[20] = 'g';
+	dnaToIndexTable[(int32)'c'] = 21;		dnaFromIndexTable[21] = 'c';
+	dnaToIndexTable[(int32)'t'] = 22;		dnaFromIndexTable[22] = 't';
+	dnaToIndexTable[(int32)'n'] = 23;		dnaFromIndexTable[23] = 'n';
 }
 
 void LosslessRecordsProcessor::ProcessForward(FastqRecord &rec_)
@@ -227,7 +233,8 @@ void LosslessRecordsProcessor::ProcessForward(FastqRecord &rec_)
 		rec_.quality[i] -= qualityOffset;
 
 		// check if the symbol differs from AGCT and whether can be transfered to quality stream
-		if (rec_.sequence[i] > 3 && rec_.quality[i] < 7)
+		// ATM. only supports standard IUPAC symbols (for backward compatibility)
+		if (rec_.sequence[i] > 3 && rec_.quality[i] < 7 && rec_.sequence[i] <= 18)
 		{
 			rec_.quality[i] += (uchar)(128 + (((uint32)rec_.sequence[i] - 3 + 1) << 3) - 16);
 		}

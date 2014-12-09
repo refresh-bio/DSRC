@@ -74,7 +74,7 @@ public:
 protected:
 	typedef byte SchemeId;
 
-	static const uint32 MaxSymbolCount = 20;
+	static const uint32 MaxSymbolCount = DnaStats::MaxSymbolCount;
 	static const SchemeId SchemeNone = 255;
 
 	IDnaModeler* modeler;
@@ -88,8 +88,6 @@ protected:
 class DnaNormalModelerProxy : public IDnaModelerProxy
 {
 private:
-	static const uint32 MaxSymbolCount = DnaStats::MaxSymbolCount;
-
 	enum Order0Schemes
 	{
 		SchemeB2 = 0,
