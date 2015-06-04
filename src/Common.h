@@ -200,7 +200,7 @@ struct QualityStats;
 class BlockCompressor;
 class HuffmanEncoder;
 
-class DsrcDataChunk;
+struct DsrcDataChunk;
 
 } // namespace comp
 
