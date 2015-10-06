@@ -59,7 +59,7 @@ BlockCompressor::BlockCompressor(const FastqDatasetType& type_, const Compressio
 {
 	records.resize(8 * 1024);
 
-	if (settings_.lossy)
+	if (settings_.lossyQuality)
 		recordsProcessor = new LossyRecordsProcessor(type_.qualityOffset, type_.colorSpace);
 	else
 		recordsProcessor = new LosslessRecordsProcessor(type_.qualityOffset, type_.colorSpace);
@@ -71,14 +71,14 @@ BlockCompressor::BlockCompressor(const FastqDatasetType& type_, const Compressio
 
 	if (settings_.qualityOrder > 0)
 	{
-		if (settings_.lossy)
+		if (settings_.lossyQuality)
 			qualityModeler = new QualityOrderModelerProxyLossy(settings_.qualityOrder);
 		else
 			qualityModeler = new QualityOrderModelerProxyLossless(settings_.qualityOrder);
 	}
 	else
 	{
-		qualityModeler = new QualityNormalModelerProxy(settings_.lossy);
+		qualityModeler = new QualityNormalModelerProxy(settings_.lossyQuality);
 	}
 
 	if (settings_.calculateCrc32)
@@ -88,7 +88,7 @@ BlockCompressor::BlockCompressor(const FastqDatasetType& type_, const Compressio
 
 		chunkHeader.checksumFlags |= fq::FastqChecksum::CALC_SEQUENCE;
 
-		if (!settings_.lossy)
+		if (!settings_.lossyQuality)
 			chunkHeader.checksumFlags |= fq::FastqChecksum::CALC_QUALITY;
 	}
 }
@@ -117,14 +117,14 @@ void BlockCompressor::ParseRecords(const FastqDataChunk& chunk_, StreamsInfo& st
 		uint64 size = parser.ParseFrom(chunk_, records, chunkHeader.recordsCount,
 									   streamInfo_, compSettings.tagPreserveFlags);
 		ASSERT(size <= chunk_.size);
-		chunkHeader.chunkSize = size;
+		chunkHeader.rawChunkSize = size;
 	}
 	else
 	{
 		FastqParser parser;
 		uint64 size = parser.ParseFrom(chunk_, records, chunkHeader.recordsCount, streamInfo_);
 		ASSERT(size <= chunk_.size);
-		chunkHeader.chunkSize = size;
+		chunkHeader.rawChunkSize = size;
 	}
 
 	ASSERT(chunkHeader.recordsCount > 0);
@@ -133,7 +133,7 @@ void BlockCompressor::ParseRecords(const FastqDataChunk& chunk_, StreamsInfo& st
 							   + streamInfo_.sizes[StreamsInfo::DnaStream]
 							   + streamInfo_.sizes[StreamsInfo::QualityStream]
 							   + chunkHeader.recordsCount * 5 - 1;		// add newlines and pluses
-	ASSERT(chunkHeader.chunkSize >= rawStreamSize);
+	ASSERT(chunkHeader.rawChunkSize >= rawStreamSize);
 }
 
 
@@ -276,12 +276,12 @@ void BlockCompressor::ReadRecords(BitMemoryReader &memory_, FastqDataChunk &chun
 
 	// extend chunk if necessary
 	//
-	chunkHeader.chunkSize += 1; // +1 for the last '\n'
-	chunk_.size = chunkHeader.chunkSize;
+	chunkHeader.rawChunkSize += 1; // +1 for the last '\n'
+	chunk_.size = chunkHeader.rawChunkSize;
 
-	if (chunk_.data.Size() < chunkHeader.chunkSize)
+	if (chunk_.data.Size() < chunkHeader.rawChunkSize)
 	{
-		chunk_.data.Extend(chunkHeader.chunkSize + MEM_EXTENSION_FACTOR(chunkHeader.chunkSize));
+		chunk_.data.Extend(chunkHeader.rawChunkSize + MEM_EXTENSION_FACTOR(chunkHeader.rawChunkSize));
 	}
 
 	CONTROL_CHECK_R(memory_);
@@ -305,7 +305,7 @@ void BlockCompressor::ReadMetaData(BitMemoryReader &memory_)
 	chunkHeader.flags = memory_.GetWord();
 	ASSERT(chunkHeader.flags < 1 << 8);
 
-	chunkHeader.chunkSize = memory_.GetWord();
+	chunkHeader.rawChunkSize = memory_.GetWord();
 
 	// setup records
 	//
@@ -345,7 +345,7 @@ void BlockCompressor::ReadMetaData(BitMemoryReader &memory_)
 		chunkHeader.checksum.sequence = memory_.GetWord();
 		ASSERT(chunkHeader.checksum.sequence != 0);
 
-		if (!compSettings.lossy)
+		if (!compSettings.lossyQuality)
 		{
 			chunkHeader.checksum.quality = memory_.GetWord();
 			ASSERT(chunkHeader.checksum.quality != 0);
@@ -405,7 +405,7 @@ void BlockCompressor::StoreMetaData(BitMemoryWriter &memory_)
 	memory_.PutWord(chunkHeader.recordsCount);
 	memory_.PutWord(chunkHeader.maxQuaLength);
 	memory_.PutWord(chunkHeader.flags);
-	memory_.PutWord(chunkHeader.chunkSize);
+	memory_.PutWord(chunkHeader.rawChunkSize);
 
 	if ((chunkHeader.flags & FLAG_VARIABLE_LENGTH) != 0)
 	{
@@ -432,7 +432,7 @@ void BlockCompressor::StoreMetaData(BitMemoryWriter &memory_)
 		ASSERT(chunkHeader.checksum.sequence != 0);
 		memory_.PutWord(chunkHeader.checksum.sequence);
 
-		if (!compSettings.lossy)
+		if (!compSettings.lossyQuality)
 		{
 			ASSERT(chunkHeader.checksum.quality != 0);
 			memory_.PutWord(chunkHeader.checksum.quality);
@@ -588,7 +588,7 @@ bool BlockCompressor::VerifyChecksum(BitMemoryReader &memory_, FastqDataChunk &c
 	if (compSettings.tagPreserveFlags == CompressionSettings::DefaultTagPreserveFlags)
 		valid &= blockCrc32.tag == chunkHeader.checksum.tag;
 	valid &= blockCrc32.sequence == chunkHeader.checksum.sequence;
-	if (!compSettings.lossy)
+	if (!compSettings.lossyQuality)
 		valid &= blockCrc32.quality == chunkHeader.checksum.quality;
 	return valid;
 }

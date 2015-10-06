@@ -22,15 +22,25 @@ namespace dsrc
 namespace lib
 {
 
-typedef DsrcException DsrcException;
-typedef wrap::FastqRecord FastqRecord;
-typedef wrap::FastqFile FastqFile;
+typedef ext::FastqRecord FastqRecord;
+typedef ext::FastqFile FastqFile;
 
-typedef wrap::FieldMask FieldMask;
-typedef wrap::DsrcModule DsrcModule;
-typedef wrap::DsrcArchive DsrcArchive;
+typedef FieldMask FieldMask;
+typedef DsrcCompressionSettings DsrcCompressionSettings;
+typedef FastqDatasetType FastqDatasetType;
+
+typedef ext::DsrcModule DsrcModule;
+
+
+typedef ext::DsrcArchiveRecordsWriter DsrcArchiveRecordsWriter;
+typedef ext::DsrcArchiveRecordsReader DsrcArchiveRecordsReader;
+typedef ext::DsrcArchiveBlocksWriterST DsrcArchiveBlocksWriter;
+typedef ext::DsrcArchiveBlocksReaderST DsrcArchiveBlocksReader;
+
 
 }
+
+
 
 }
 

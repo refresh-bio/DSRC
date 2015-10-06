@@ -30,8 +30,8 @@ struct DsrcFileHeader
 	static const uint32 HeaderSize				= 4 + ReservedBytes + 3*8 + 4;
 
 	static const uint32 VersionMajor = 2;
-	static const uint32 VersionMinor = 0;
-	static const uint32 VersionRev = 2;
+	static const uint32 VersionMinor = 1;
+	static const uint32 VersionRev = 0;
 
 	uchar	dummyByte;
 	uchar	versionMajor;
@@ -50,11 +50,11 @@ struct DsrcFileFooter
 {
 	static const uchar DummyByteValue			= 0xCC;
 	static const uint32 DatasetTypeSize			= 1 + 1;
-	static const uint32 CompressionSettingsSize = 1 + 1 + 1 + 8;
+	static const uint32 CompressionSettingsSize = 1 + 1 + 1 + 8 + 2;
 
 	uchar dummyByte;
 
-	fq::FastqDatasetType datasetType;
+	FastqDatasetType datasetType;
 	CompressionSettings compSettings;
 
 	enum DatasetTypeFlags
@@ -94,7 +94,7 @@ public:
 	~DsrcFileWriter();
 
 	void StartCompress(const std::string& filename_);
-	void SetDatasetType(const fq::FastqDatasetType& typeInfo_)
+	void SetDatasetType(const FastqDatasetType& typeInfo_)
 	{
 		fileFooter.datasetType = typeInfo_;
 	}
@@ -136,7 +136,7 @@ public:
 
 	void StartDecompress(const std::string& fileName_);
 
-	const fq::FastqDatasetType& GetDatasetType() const
+	const FastqDatasetType& GetDatasetType() const
 	{
 		return fileFooter.datasetType;
 	}

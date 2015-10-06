@@ -30,14 +30,13 @@ SOURCES += \
     StdStream.cpp \
     DsrcWorker.cpp \
     DsrcOperator.cpp \
-    DsrcIo.cpp
+    DsrcIo.cpp \
+    RecordsBlockCompressor.cpp
 
 SOURCES += \
-    BlockCompressorExt.cpp \
     DsrcArchive.cpp \
     FastqFile.cpp \
-    DsrcModule.cpp \
-    Configurable.cpp
+    DsrcModule.cpp
 
 #SOURCES += ../py/Interface.cpp
 
@@ -81,16 +80,15 @@ HEADERS += \
     DsrcOperator.h \
     Common.h \
     Crc32.h \
-    ErrorHandler.h
+    ErrorHandler.h \
+    RecordsBlockCompressor.h
 
 HEADERS += \
-    BlockCompressorExt.h \
-    ../dsrc/include/Configurable.h \
-    ../dsrc/include/DsrcArchive.h \
-    ../dsrc/include/FastqFile.h \
-    ../dsrc/include/DsrcModule.h \
-    ../dsrc/include/Dsrc.h \
-    ../dsrc/include/Globals.h \
-    ../dsrc/include/FastqRecord.h
+    ../include/dsrc/DsrcArchive.h \
+    ../include/dsrc/FastqFile.h \
+    ../include/dsrc/DsrcModule.h \
+    ../include/dsrc/Dsrc.h \
+    ../include/dsrc/Globals.h \
+    ../include/dsrc/FastqRecord.h
 
 #LIBS += -lboost_python -lpython2.7

@@ -44,7 +44,11 @@ using namespace fq;
 const uint32 IDsrcOperator::AvailableHardwareThreadsNum = th::thread::hardware_concurrency();
 
 
-bool DsrcCompressorST::Process(const InputParameters &args_)
+bool DsrcCompressorST::Process(const std::string& fastqFilename_,
+							   const std::string& dsrcFilename_,
+							   const DsrcCompressionSettings& compSettings_,
+							   bool useFastqStdIo_,
+							   uint32 qualityOffset_)
 {
 	ASSERT(!IsError());
 
@@ -59,40 +63,42 @@ bool DsrcCompressorST::Process(const InputParameters &args_)
 	//
 
 	FastqDatasetType datasetType;
-	CompressionSettings settings = GetCompressionSettings(args_);
+	CompressionSettings settings = CompressionSettings::ConvertFrom(compSettings_);
 
 	try
 	{
-		if (args_.useFastqStdIo)
+		if (useFastqStdIo_)
 			reader = new FastqStdIoReader();
 		else
-			reader = new FastqFileReader(args_.inputFilename);
+			reader = new FastqFileReader(fastqFilename_);
 
 		// join into constructor for RAII style
 		writer = new DsrcFileWriter();
-		writer->StartCompress(args_.outputFilename);
+		writer->StartCompress(dsrcFilename_);
 
 		dsrcChunk = new DsrcDataChunk(DsrcDataChunk::DefaultBufferSize);
-		fastqChunk = new FastqDataChunk(args_.fastqBufferSizeMB << 20);
+		fastqChunk = new FastqDataChunk(compSettings_.fastqBufferSizeMb << 20);
 
 		// analyze the header
 		//
-		const bool findQOffset = args_.qualityOffset == fq::FastqDatasetType::AutoQualityOffset;
+		const bool findQOffset = qualityOffset_ == FastqDatasetType::AutoQualityOffsetSelect;
 		if (!findQOffset)
 		{
-			datasetType.qualityOffset = args_.qualityOffset;
+			datasetType.qualityOffset = qualityOffset_;
 		}
 
 		FastqParser parser;
 		if (!reader->ReadNextChunk(fastqChunk) || parser.Analyze(*fastqChunk, datasetType, findQOffset) == 0)
 		{
-			throw DsrcException("Error analyzing FASTQ dataset");
+			AddError("Error analyzing FASTQ dataset");
 		}
-
-		writer->SetDatasetType(datasetType);
-		writer->SetCompressionSettings(settings);
+		else
+		{
+			writer->SetDatasetType(datasetType);
+			writer->SetCompressionSettings(settings);
+		}
 	}
-	catch (const std::runtime_error& e_)
+	catch (const DsrcException& e_)
 	{
 		AddError(e_.what());
 	}
@@ -111,7 +117,7 @@ bool DsrcCompressorST::Process(const InputParameters &args_)
 
 			writer->WriteNextChunk(dsrcChunk);
 
-			if (args_.calculateCrc32)
+			if (compSettings_.calculateCrc32)
 			{
 				BitMemoryReader reader(dsrcChunk->data.Pointer(), dsrcChunk->data.Size());
 				std::fill(fastqChunk->data.Pointer(), fastqChunk->data.Pointer() + fastqChunk->data.Size(), 0xCC);
@@ -162,7 +168,9 @@ bool DsrcCompressorST::Process(const InputParameters &args_)
 	return !IsError();
 }
 
-bool DsrcDecompressorST::Process(const InputParameters& args_)
+bool DsrcDecompressorST::Process(const std::string& fastqFilename_,
+								 const std::string& dsrcFilename_,
+								 bool useFastqStdIo_)
 {
 	ASSERT(!IsError());
 
@@ -179,17 +187,17 @@ bool DsrcDecompressorST::Process(const InputParameters& args_)
 	try
 	{
 		reader = new DsrcFileReader();
-		reader->StartDecompress(args_.inputFilename);
+		reader->StartDecompress(dsrcFilename_);
 
-		if (args_.useFastqStdIo)
+		if (useFastqStdIo_)
 			writer = new FastqStdIoWriter();
 		else
-			writer = new FastqFileWriter(args_.outputFilename);
+			writer = new FastqFileWriter(fastqFilename_);
 
 		dsrcChunk = new DsrcDataChunk(DsrcDataChunk::DefaultBufferSize);
 		fastqChunk = new FastqDataChunk(FastqDataChunk::DefaultBufferSize);
 	}
-	catch (const std::runtime_error& e_)
+	catch (const DsrcException& e_)
 	{
 		AddError(e_.what());
 	}
@@ -227,7 +235,12 @@ bool DsrcDecompressorST::Process(const InputParameters& args_)
 	return !IsError();
 }
 
-bool DsrcCompressorMT::Process(const InputParameters &args_)
+bool DsrcCompressorMT::Process(const std::string& fastqFilename_,
+							   const std::string& dsrcFilename_,
+							   const DsrcCompressionSettings& compSettings_,
+							   uint32 threadNum_,
+							   bool useFastqStdIo_,
+							   uint32 qualityOffset_)
 {
 	IFastqStreamReader* fileReader = NULL;
 	DsrcFileWriter* fileWriter = NULL;
@@ -246,26 +259,26 @@ bool DsrcCompressorMT::Process(const InputParameters &args_)
 	DsrcWriter* dataWriter = NULL;
 
 	FastqDatasetType datasetType;
-	CompressionSettings compSettings = GetCompressionSettings(args_);
+	CompressionSettings compSettings = CompressionSettings::ConvertFrom(compSettings_);
 
 	try
 	{
-		if (args_.useFastqStdIo)
+		if (useFastqStdIo_)
 			fileReader = new FastqStdIoReader();
 		else
-			fileReader = new FastqFileReader(args_.inputFilename);
+			fileReader = new FastqFileReader(fastqFilename_);
 
 		fileWriter = new DsrcFileWriter();
-		fileWriter->StartCompress(args_.outputFilename);
+		fileWriter->StartCompress(dsrcFilename_);
 
-		const uint32 partNum = (args_.fastqBufferSizeMB < 128) ? args_.threadNum * 4 : args_.threadNum * 2;
-		fastqPool = new FastqDataPool(partNum, args_.fastqBufferSizeMB << 20);		// maxPart, bufferPartSize
-		fastqQueue = new FastqDataQueue(partNum, 1);								// maxPart, threadCount
+		const uint32 partNum = (compSettings_.fastqBufferSizeMb < 128) ? threadNum_ * 4 : threadNum_ * 2;
+		fastqPool = new FastqDataPool(partNum, compSettings_.fastqBufferSizeMb << 20);		// maxPart, bufferPartSize
+		fastqQueue = new FastqDataQueue(partNum, 1);										// maxPart, threadCount
 
-		dsrcPool = new DsrcDataPool(partNum, args_.fastqBufferSizeMB << 20);
-		dsrcQueue = new DsrcDataQueue(partNum, args_.threadNum);
+		dsrcPool = new DsrcDataPool(partNum, compSettings_.fastqBufferSizeMb << 20);
+		dsrcQueue = new DsrcDataQueue(partNum, threadNum_);
 
-		if (args_.calculateCrc32)
+		if (compSettings_.calculateCrc32)
 			errorHandler = new MultithreadedErrorHandler();
 		else
 			errorHandler = new ErrorHandler();
@@ -275,38 +288,38 @@ bool DsrcCompressorMT::Process(const InputParameters &args_)
 
 		// analyze file
 		//
-		const bool findQOffset = args_.qualityOffset == fq::FastqDatasetType::AutoQualityOffset;
+		const bool findQOffset = qualityOffset_ == FastqDatasetType::AutoQualityOffsetSelect;
 		if (!findQOffset)
-			datasetType.qualityOffset = args_.qualityOffset;
+			datasetType.qualityOffset = qualityOffset_;
 
 		if (!dataReader->AnalyzeFirstChunk(datasetType, findQOffset))
 		{
-			throw DsrcException("Error analyzing FASTQ dataset");
+			AddError("Error analyzing FASTQ dataset");
 		}
-
-		fileWriter->SetDatasetType(datasetType);
-		fileWriter->SetCompressionSettings(compSettings);
+		else
+		{
+			fileWriter->SetDatasetType(datasetType);
+			fileWriter->SetCompressionSettings(compSettings);
+		}
 	}
-	catch (const std::runtime_error& e_)
+	catch (const DsrcException& e_)
 	{
 		AddError(e_.what());
 	}
 
 	if (!IsError())
 	{
-		const uint32 threadsNum = args_.threadNum;
-
 		// launch threads
 		//
 		th::thread readerThread(th::ref(*dataReader));
 
 		std::vector<DsrcCompressor*> operators;
-		operators.resize(threadsNum);
+		operators.resize(threadNum_);
 
 #ifdef USE_BOOST_THREAD
 		boost::thread_group opThreadGroup;		// why C++11 does not have thread_group? ://
 
-		for (uint32 i = 0; i < threadsNum; ++i)
+		for (uint32 i = 0; i < threadNum_; ++i)
 		{
 			operators[i] = new DsrcCompressor(*fastqQueue, *fastqPool, *dsrcQueue, *dsrcPool, *errorHandler, datasetType, compSettings);
 			opThreadGroup.create_thread(th::ref(*operators[i]));
@@ -320,7 +333,7 @@ bool DsrcCompressorMT::Process(const InputParameters &args_)
 #else
 		std::vector<th::thread> opThreadGroup;
 
-		for (uint32 i = 0; i < threadsNum; ++i)
+		for (uint32 i = 0; i < threadNum_; ++i)
 		{
 			operators[i] = new DsrcCompressor(*fastqQueue, *fastqPool, *dsrcQueue, *dsrcPool, *errorHandler, datasetType, compSettings);
 			opThreadGroup.push_back(th::thread(th::ref(*operators[i])));
@@ -350,7 +363,7 @@ bool DsrcCompressorMT::Process(const InputParameters &args_)
 		fastqQueue->Reset();
 		dsrcQueue->Reset();
 
-		for (uint32 i = 0; i < threadsNum; ++i)
+		for (uint32 i = 0; i < threadNum_; ++i)
 		{
 			delete operators[i];
 		}
@@ -394,7 +407,10 @@ bool DsrcCompressorMT::Process(const InputParameters &args_)
 	return !IsError();
 }
 
-bool DsrcDecompressorMT::Process(const InputParameters &args_)
+bool DsrcDecompressorMT::Process(const std::string& fastqFilename_,
+								 const std::string& dsrcFilename_,
+								 uint32 threadNum_,
+								 bool useFastqStdIo_)
 {
 	ASSERT(!IsError());
 
@@ -417,45 +433,45 @@ bool DsrcDecompressorMT::Process(const InputParameters &args_)
 	try
 	{
 		fileReader = new DsrcFileReader();
-		fileReader->StartDecompress(args_.inputFilename);
+		fileReader->StartDecompress(dsrcFilename_);		// here get FASTQ buffer size!!!!
 
-		if (args_.useFastqStdIo)
+		if (useFastqStdIo_)
 			fileWriter= new FastqStdIoWriter();
 		else
-			fileWriter = new FastqFileWriter(args_.outputFilename);
+			fileWriter = new FastqFileWriter(fastqFilename_);
 
-		const uint32 partNum = (args_.fastqBufferSizeMB < 128) ? args_.threadNum * 4 : args_.threadNum * 2;
-		dsrcPool = new DsrcDataPool(partNum, args_.fastqBufferSizeMB << 20);
+		const uint32 fastqBufferSizeMB = fileReader->GetCompressionSettings().fastqBufferSizeMb;
+		const uint32 partNum = (fastqBufferSizeMB < 128) ? threadNum_ * 4 : threadNum_ * 2;
+
+		dsrcPool = new DsrcDataPool(partNum, fastqBufferSizeMB << 20);
 		dsrcQueue = new DsrcDataQueue(partNum, 1);
 
-		fastqPool = new FastqDataPool(partNum, DsrcDataPool::DefaultBufferPartSize);		// maxPart, bufferPartSize
-		fastqQueue = new FastqDataQueue(partNum, args_.threadNum);						// maxPart, threadCount
+		fastqPool = new FastqDataPool(partNum, fastqBufferSizeMB << 20);		// maxPart, bufferPartSize
+		fastqQueue = new FastqDataQueue(partNum, threadNum_);					// maxPart, threadCount
 
 		errorHandler = new ErrorHandler();
 		dataReader = new DsrcReader(*fileReader, *dsrcQueue, *dsrcPool, *errorHandler);
 		dataWriter = new FastqWriter(*fileWriter, *fastqQueue, *fastqPool, *errorHandler);
 	}
-	catch(const std::runtime_error& e_)
+	catch (const DsrcException& e_)
 	{
 		AddError(e_.what());
 	}
 
 	if (!IsError())
 	{
-		const uint32 threadsNum = args_.threadNum;
-
 		// launch threads
 		//
 		th::thread readerThread(th::ref(*dataReader));
 
 		std::vector<DsrcDecompressor*> operators;
-		operators.resize(threadsNum);
+		operators.resize(threadNum_);
 
 
 #ifdef USE_BOOST_THREAD
 		boost::thread_group opThreadGroup;
 
-		for (uint32 i = 0; i < threadsNum; ++i)
+		for (uint32 i = 0; i < threadNum_; ++i)
 		{
 			operators[i] = new DsrcDecompressor(*fastqQueue, *fastqPool, *dsrcQueue, *dsrcPool, *errorHandler,
 												fileReader->GetDatasetType(), fileReader->GetCompressionSettings());
@@ -470,7 +486,7 @@ bool DsrcDecompressorMT::Process(const InputParameters &args_)
 #else
 		std::vector<th::thread> opThreadGroup;
 
-		for (uint32 i = 0; i < threadsNum; ++i)
+		for (uint32 i = 0; i < threadNum_; ++i)
 		{
 			operators[i] = new DsrcDecompressor(*fastqQueue, *fastqPool, *dsrcQueue, *dsrcPool, *errorHandler,
 												fileReader->GetDatasetType(), fileReader->GetCompressionSettings());
@@ -492,7 +508,7 @@ bool DsrcDecompressorMT::Process(const InputParameters &args_)
 		fastqQueue->Reset();
 		dsrcQueue->Reset();
 
-		for (uint32 i = 0; i < threadsNum; ++i)
+		for (uint32 i = 0; i < threadNum_; ++i)
 		{
 			delete operators[i];
 		}

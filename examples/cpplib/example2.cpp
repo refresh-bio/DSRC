@@ -1,6 +1,8 @@
+#include <iostream>
 #include <Dsrc.h>
 
-#include <iostream>
+using namespace dsrc::lib;
+
 
 void PrintMessage();
 int CompressFile_Illumina_Lossy(const char* inFilename_, const char* outFilename_);
@@ -45,44 +47,44 @@ void PrintMessage()
 
 int CompressFile_Illumina_Lossy(const char* inFilename_, const char* outFilename_)
 {
-	using namespace dsrc::lib;
-
 	// 1. Open FASTQ file
 	//
 	FastqFile fastqFile;
-	try
+	if (!fastqFile.Open(inFilename_))		// TODO: analyze the dataset type
 	{
-		fastqFile.Open(inFilename_);
-	}
-	catch (const DsrcException& e)
-	{
-		std::cerr << "Error!" << std::endl;
-		std::cerr << e.what() << std::endl;
+		std::cerr << "Error: cannot open FASTQ file: " << inFilename_ << std::endl;
 		return -1;
 	}
 
-	// 2. Create and configure DSRC archive
-	//
-	DsrcArchive archive;
-	try
-	{
-		archive.SetLossyCompression(true);
-		archive.SetTagFieldFilterMask(FieldMask().AddField(1).AddField(2).GetMask());
-		archive.SetDnaCompressionLevel(2);
-		archive.SetQualityCompressionLevel(2);
-		archive.SetPlusRepetition(false);								// discard repeated TAG information in "+" lines
-		archive.SetFastqBufferSizeMB(256);
 
-		archive.StartCompress(outFilename_);
-	}
-	catch (const DsrcException& e)
+	// 2. Create and configure DSRC archive records writer
+	//
+	// specify DSRC archive compression settings
+	DsrcCompressionSettings settings;
+	settings.lossyQualityCompression = true;
+	settings.tagPreserveMask = FieldMask().AddField(1).AddField(2).GetMask();
+	settings.dnaCompressionLevel = 2;
+	settings.qualityCompressionLevel = 2;
+	settings.fastqBufferSizeMb = 256;
+
+	// specify explicitely input FASTQ dataset type
+	FastqDatasetType datasetType;
+	datasetType.plusRepetition = false;
+	datasetType.colorSpace = false;
+
+	// initialize compression routine with prepared settings
+	DsrcArchiveRecordsWriter archive;
+	if (!archive.StartCompress(outFilename_,
+							   settings,
+							   datasetType))
 	{
 		fastqFile.Close();
 
 		std::cerr << "Error!" << std::endl;
-		std::cerr << e.what() << std::endl;
+		std::cerr << archive.GetError() << std::endl;
 		return -1;
 	}
+
 
 	// 3. When configured, start compression
 	//
@@ -100,7 +102,8 @@ int CompressFile_Illumina_Lossy(const char* inFilename_, const char* outFilename
 
 	fastqFile.Close();
 
-	std::cerr << "Sucess!\nCompressed records: " << recCount << std::endl;
+	std::cerr << "Sucess!" << std::endl;
+	std::cerr << "Compressed records: " << recCount << std::endl;
 	return 0;
 }
 
@@ -112,37 +115,30 @@ int CompressFile_Solid_Lossless(const char* inFilename_, const char* outFilename
 	// 1. Open FASTQ file
 	//
 	FastqFile fastqFile;
-	try
+	if (!fastqFile.Open(inFilename_))			// TODO: analyze the dataset type
 	{
-		fastqFile.Open(inFilename_);
-	}
-	catch (const DsrcException& e)
-	{
-		std::cerr << "Error!" << std::endl;
-		std::cerr << e.what() << std::endl;
+		std::cerr << "Error: cannot open FASTQ file: " << inFilename_ << std::endl;
 		return -1;
 	}
 
 	// 2. Create and configure DSRC archive
 	//
-	DsrcArchive archive;
-	try
+	DsrcCompressionSettings settings;
+	settings.dnaCompressionLevel = 2;
+	settings.qualityCompressionLevel = 1;
+	settings.fastqBufferSizeMb = 64;
+
+	FastqDatasetType datasetType;
+	datasetType.colorSpace = true;
+	datasetType.plusRepetition = false;	// discard repeated TAG information in "+" lines
+
+	DsrcArchiveRecordsWriter archive;
+	if (!archive.StartCompress(outFilename_,
+							   settings,
+							   datasetType))
 	{
-		archive.SetColorSpace(true);
-
-		archive.SetDnaCompressionLevel(2);
-		archive.SetQualityCompressionLevel(1);
-		archive.SetPlusRepetition(false);						// discard repeated TAG information in "+" lines
-		archive.SetFastqBufferSizeMB(64);
-
-		archive.StartCompress(outFilename_);
-	}
-	catch (const DsrcException& e)
-	{
-		fastqFile.Close();
-
 		std::cerr << "Error!" << std::endl;
-		std::cerr << e.what() << std::endl;
+		std::cerr << archive.GetError() << std::endl;
 		return -1;
 	}
 
@@ -162,42 +158,32 @@ int CompressFile_Solid_Lossless(const char* inFilename_, const char* outFilename
 
 	fastqFile.Close();
 
-	std::cerr << "Sucess!\nCompressed records: " << recCount << std::endl;
+	std::cerr << "Sucess!" << std::endl;
+	std::cerr << "Compressed records: " << recCount << std::endl;
 	return 0;
 }
 
 
 int DecompressFile(const char* inFilename_, const char* outFilename_)
 {
-	using namespace dsrc::lib;
-
 	// 1. Open DSRC archive
 	//
-	DsrcArchive archive;
-	try
-	{
-		archive.StartDecompress(inFilename_);
-	}
-	catch (const DsrcException& e)
+	DsrcArchiveRecordsReader archive;
+	if (!archive.StartDecompress(inFilename_))
 	{
 		std::cerr << "Error!" << std::endl;
-		std::cerr << e.what() << std::endl;
+		std::cerr << archive.GetError() << std::endl;
 		return -1;
 	}
 
 	// 2. Create output FASTQ file
 	//
 	FastqFile fastqFile;
-	try
-	{
-		fastqFile.Create(outFilename_);
-	}
-	catch (const DsrcException& e)
+	if (!fastqFile.Create(outFilename_))
 	{
 		archive.FinishDecompress();
 
-		std::cerr << "Error!" << std::endl;
-		std::cerr << e.what() << std::endl;
+		std::cerr << "Error: cannot open FASTQ file: " << inFilename_ << std::endl;
 		return -1;
 	}
 
@@ -217,6 +203,7 @@ int DecompressFile(const char* inFilename_, const char* outFilename_)
 
 	archive.FinishDecompress();
 
-	std::cerr << "Success!\nDecompressed records: " << recCount << std::endl;
+	std::cerr << "Success!" << std::endl;
+	std::cerr << "Decompressed records: " << recCount << std::endl;
 	return 0;
 }

@@ -16,75 +16,33 @@
 namespace dsrc
 {
 
-namespace wrap
+namespace ext
 {
 
-class IFastqStream
-{
-public:
-	enum StreamMode
-	{
-		ModeNone = 0,
-		ModeRead,
-		ModeWrite
-	};
-
-	IFastqStream();
-	virtual ~IFastqStream();
-
-	bool ReadNextRecord(FastqRecord& rec_)
-	{
-		return ReadString(rec_.tag) && ReadString(rec_.sequence)
-				&& ReadString(rec_.plus) && ReadString(rec_.quality);
-	}
-
-	void WriteNextRecord(const FastqRecord& rec_)
-	{
-		WriteString(rec_.tag);
-		WriteString(rec_.sequence);
-		WriteString(rec_.plus);
-		WriteString(rec_.quality);
-	}
-
-protected:
-	struct BufferImpl;
-	static const uint64 DefaultBufferSize = 1 << 12;
-
-	StreamMode mode;
-	BufferImpl* ioBuffer;
-
-	virtual uint64 ReadBuffer(byte* mem_, uint64 size_) = 0;
-	virtual uint64 WriteBuffer(byte* mem_, uint64 size_) = 0;
-
-	void Open(StreamMode mode_);
-	void Close();
-
-	bool ReadString(std::string& str_);
-	void WriteString(const std::string& str_);
-	void Flush();
-};
-
-class FastqFile : public IFastqStream
+class FastqFile
 {
 public:
+	static bool AnalyzeFastqDatasetType(FastqDatasetType& type_, byte* buffer_, uint64 bufferSize_);
+
 	FastqFile();
 	~FastqFile();
 
-	void Open(const std::string& filename_);
-	void Create(const std::string& filename_);
+	bool Open(const std::string& filename_);
+	bool Create(const std::string& filename_);
 	void Close();
 
+	bool ReadNextRecord(FastqRecord& rec_);
+	void WriteNextRecord(const FastqRecord& rec_);
+
+	bool GetFastqDatasetType(FastqDatasetType& type_);
+
 private:
-	struct StreamImpl;
-
-	StreamImpl* impl;
-
-	uint64 ReadBuffer(byte* mem_, uint64 size_);
-	uint64 WriteBuffer(byte* mem_, uint64 size_);
+	struct FastqFileImpl;
+	FastqFileImpl* fastqImpl;
 };
 
 
-} // namespace wrap
+} // namespace ext
 
 } // namespace dsrc
 

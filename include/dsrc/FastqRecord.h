@@ -15,7 +15,7 @@
 namespace dsrc
 {
 
-namespace wrap
+namespace ext
 {
 
 struct FastqRecord
@@ -26,7 +26,7 @@ struct FastqRecord
 	std::string quality;
 };
 
-} // namespace wrap
+} // namespace ext
 
 } // namespace dsrc
 

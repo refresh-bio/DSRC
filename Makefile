@@ -1,25 +1,23 @@
-.PHONY: all lib bin pylib examples clean
+.PHONY: all lib bin examples clean
 
-all: bin lib examples
+all: lib bin examples
 
 export
 
 CXX = g++
 CXXFLAGS = -O2 -m64
 CXXFLAGS += -DNDEBUG -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
-CXXFLAGS += -Wall #-pedantic
+CXXFLAGS += -Wall
 
-# comment the line below to compile and link in shared mode
-CXXFLAGS += -static
+# there are problems when statically linking with pthreads and libstdc++
+# so use only shared linking
+#CXXFLAGS += -static
 
-# by default compile using boost::thread 
-# boost::thread from 1.50+ explicitely requires boost::system library
-CXXFLAGS += -DUSE_BOOST_THREAD
-DEP_LIBS += -lboost_thread -lboost_system
+# compile using c++11
+CXXFLAGS += -std=c++11
 
-# necessary library to link
-# (even when using boost, remember to link it _after_ linking with boost::thread)
 DEP_LIBS += -lpthread
+
 
 APP_NAME = dsrc
 LIB_NAME = libdsrc.a
@@ -40,12 +38,8 @@ lib:
 examples:
 	cd examples/cpplib; ${MAKE}
 
-pylib:
-	cd py; ${MAKE}
-
 clean:
 	cd src; ${MAKE} clean
 	cd examples/cpplib; ${MAKE} clean
-	cd py; ${MAKE} clean
 	-rm -r $(LIB_DIR)
 	-rm -r $(BIN_DIR)

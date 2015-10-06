@@ -27,13 +27,18 @@
 namespace dsrc
 {
 
+namespace ext
+{
+class RecordsBlockCompressor;
+}
+
 namespace comp
 {
 
 struct ChunkHeader
 {
 	uint64 recordsCount;
-	uint64 chunkSize;
+	uint64 rawChunkSize;
 	uint32 flags;
 
 	uint16 minQuaLength;
@@ -48,7 +53,7 @@ struct ChunkHeader
 
 	ChunkHeader()
 		:	recordsCount(0)
-		,	chunkSize(0)
+		,	rawChunkSize(0)
 		,	flags(0)
 		,	minQuaLength(-1)
 		,	maxQuaLength(0)
@@ -59,11 +64,10 @@ struct ChunkHeader
 	{}
 };
 
-
 class BlockCompressor
 {
 public:
-	BlockCompressor(const fq::FastqDatasetType& type_, const CompressionSettings& settings_);
+	BlockCompressor(const FastqDatasetType& type_, const CompressionSettings& settings_);
 	virtual ~BlockCompressor();
 	
 	void Store(core::BitMemoryWriter &memory_, fq::StreamsInfo& rawStreamsInfo_, fq::StreamsInfo& compStreamsInfo_, const fq::FastqDataChunk& chunk_);
@@ -73,6 +77,8 @@ public:
 	void Reset();
 
 protected:
+	friend class ext::RecordsBlockCompressor;
+
 	enum FastqBlockFlags
 	{
 		FLAG_DELTA_CONSTANT			= BIT(0),
@@ -80,7 +86,7 @@ protected:
 		FLAG_MIXED_FIELD_FORMATTING	= BIT(2)		// this should be handled by TagModelerProxy*
 	};
 
-	const fq::FastqDatasetType datasetType;
+	const FastqDatasetType datasetType;
 	const CompressionSettings compSettings;
 
 	std::vector<fq::FastqRecord> records;

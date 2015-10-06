@@ -22,13 +22,13 @@ APP_OBJS = DsrcOperator.o \
 	FastqStream.o \
 	FileStream.o \
 	StdStream.o \
-	huffman.o
+	huffman.o \
+	DsrcModule.o
 
 LIB_OBJS = DsrcArchive.o \
-	DsrcModule.o \
-	BlockCompressorExt.o \
-	FastqFile.o \
-	Configurable.o
+	RecordsBlockCompressor.o \
+	FastqFile.o
+#	DsrcModule.o
 
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@

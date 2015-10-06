@@ -31,7 +31,7 @@ class IDsrcThreadWorker
 public:
 	IDsrcThreadWorker(fq::FastqDataQueue& fastqQueue_, fq::FastqDataPool& fastqPool_,
 				   DsrcDataQueue& dsrcQueue_, DsrcDataPool& dsrcPool_, core::ErrorHandler& errorHandler_,
-				   const fq::FastqDatasetType& type_, const CompressionSettings& settings_)
+				   const FastqDatasetType& type_, const CompressionSettings& settings_)
 		:	fastqQueue(fastqQueue_)
 		,	fastqPool(fastqPool_)
 		,	dsrcQueue(dsrcQueue_)
@@ -55,7 +55,7 @@ protected:
 	DsrcDataPool& dsrcPool;
 	core::ErrorHandler&	errorHandler;
 
-	fq::FastqDatasetType datasetType;
+	FastqDatasetType datasetType;
 	CompressionSettings compSettings;
 
 private:
@@ -67,7 +67,7 @@ class DsrcCompressor : public IDsrcThreadWorker
 public:
 	DsrcCompressor(fq::FastqDataQueue& fastqQueue_, fq::FastqDataPool& fastqPool_,
 				   DsrcDataQueue& dsrcQueue_, DsrcDataPool& dsrcPool_, core::ErrorHandler& errorHandler_,
-				   const fq::FastqDatasetType& type_, const CompressionSettings& settings_)
+				   const FastqDatasetType& type_, const CompressionSettings& settings_)
 		:	IDsrcThreadWorker(fastqQueue_, fastqPool_, dsrcQueue_, dsrcPool_, errorHandler_, type_, settings_)
 	{}
 
@@ -81,7 +81,7 @@ class DsrcDecompressor : public IDsrcThreadWorker
 public:
 	DsrcDecompressor(fq::FastqDataQueue& fastqQueue_, fq::FastqDataPool& fastqPool_,
 					DsrcDataQueue& dsrcQueue_, DsrcDataPool& dsrcPool_, core::ErrorHandler& errorHandler_,
-					const fq::FastqDatasetType& type_, const CompressionSettings& settings_)
+					const FastqDatasetType& type_, const CompressionSettings& settings_)
 		:	IDsrcThreadWorker(fastqQueue_, fastqPool_, dsrcQueue_, dsrcPool_, errorHandler_, type_, settings_)
 	{}
 

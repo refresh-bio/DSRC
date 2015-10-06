@@ -62,7 +62,10 @@ template <typename _T>
 inline void TFree(_T* p_)
 {
 	if (p_ != (_T*)0)
-		delete p_, p_ = (_T*)0;
+	{
+		delete p_;
+		p_ = (_T*)0;
+	}
 }
 
 inline uint32 to_string(uchar* str, uint32 value)

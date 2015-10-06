@@ -75,7 +75,7 @@ FileStreamReader::FileStreamReader(const std::string& fileName_)
 	FILE* f = FOPEN(fileName_.c_str(), "rb");
 	if (f == NULL)
 	{
-		throw DsrcException(("Cannot open file to read:" + fileName_).c_str());
+		throw DsrcException(("Cannot open file to read: " + fileName_).c_str());
 	}
 	impl->file = f;
 }

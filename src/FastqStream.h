@@ -116,7 +116,7 @@ protected:
 };
 
 
-// wrappers
+// extpers
 //
 class FastqFileReader : public IFastqStreamReader
 {

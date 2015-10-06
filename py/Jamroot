@@ -9,7 +9,8 @@ import python ;
 # To compile DSRC Python module please specify your boost installation directory below
 #
 use-project boost 
-	: /absolute/path/to/boost/directory/ ;
+	: /home/lucas/devel/src/boost_1_49_0/ ;
+#	: /absolute/path/to/boost/directory/ ;
 
 
 #

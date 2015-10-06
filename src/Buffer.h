@@ -23,29 +23,32 @@ namespace dsrc
 namespace core
 {
 
-#define USE_64BIT_MEMORY 1
 
 class Buffer
 {
 public:
 	Buffer(uint64 size_)
+		:	size(size_)
+		,	ownsMemory(true)
 	{
 		ASSERT(size_ != 0);
 
-#if (USE_64BIT_MEMORY)
-		uint64 size64 = size_ / 8;
-		if (size64 * 8 < size_)
-			size64 += 1;
-		buffer = new uint64[size64];
-#else
 		buffer = new byte[size_];
-#endif
-		size = size_;
+	}
+
+	Buffer(byte* mem_, uint64 size_)
+		:	buffer(mem_)
+		,	size(size_)
+		,	ownsMemory(false)
+	{
+		ASSERT(size_ != 0);
+		ASSERT(mem_ != NULL);
 	}
 
 	~Buffer()
 	{
-		delete buffer;
+		if (ownsMemory)
+			delete buffer;
 	}
 
 	uint64 Size() const
@@ -58,38 +61,10 @@ public:
 		return (byte*)buffer;
 	}
 
-#if (USE_64BIT_MEMORY)
-	uint64* Pointer64() const
-	{
-		return buffer;
-	}
-#endif
-
 	void Extend(uint64 size_, bool copy_ = false)
-	{		
-#if (USE_64BIT_MEMORY)
-		uint64 size64 = size / 8;
-		if (size64 * 8 < size)
-			size64 += 1;
+	{
+		ASSERT(ownsMemory);		// TODO: should be an error thrown here
 
-		uint64 newSize64 = size_ / 8;
-		if (newSize64 * 8 < size_)
-			newSize64 += 1;
-
-		if (size > size_)
-			return;
-
-		if (size64 == newSize64)
-		{
-			size = size_;
-			return;
-		}
-
-		uint64* p = new uint64[newSize64];
-
-		if (copy_)
-			std::copy(buffer, buffer + size64, p);
-#else
 		if (size > size_)
 			return;
 
@@ -98,7 +73,6 @@ public:
 		if (copy_)
 			std::copy(buffer, buffer + size, p);
 
-#endif
 		delete[] buffer;
 
 		buffer = p;
@@ -109,6 +83,7 @@ public:
 	{
 		TSwap(b.buffer, buffer);
 		TSwap(b.size, size);
+		TSwap(b.ownsMemory, ownsMemory);
 	}
 
 private:
@@ -116,12 +91,9 @@ private:
 	Buffer& operator= (const Buffer& )
 	{ return *this; }
 
-#if (USE_64BIT_MEMORY)
-	uint64* buffer;
-#else
 	byte* buffer;
-#endif
 	uint64 size;
+	bool ownsMemory;
 };
 
 
@@ -132,8 +104,13 @@ struct DataChunk
 	Buffer data;
 	uint64 size;
 
-	DataChunk(const uint64 bufferSize_ = DefaultBufferSize)
+	DataChunk(uint64 bufferSize_ = DefaultBufferSize)
 		:	data(bufferSize_)
+		,	size(0)
+	{}
+
+	DataChunk(byte* buffer_, uint64 bufferSize_)
+		:	data(buffer_, bufferSize_)
 		,	size(0)
 	{}
 

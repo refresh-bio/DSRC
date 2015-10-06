@@ -30,8 +30,6 @@ public:
 
 	virtual ~IDsrcOperator() {}
 
-	virtual bool Process(const InputParameters& args_) = 0;
-
 	bool IsError() const
 	{
 		return errorMessage.length() > 0;
@@ -70,48 +68,44 @@ protected:
 	{
 		logMessage += log_ + '\n';
 	}
-
-	static CompressionSettings GetCompressionSettings(const InputParameters& args_)
-	{
-		CompressionSettings settings;
-
-		settings.lossy = args_.lossyCompression;
-		settings.dnaOrder = args_.dnaCompressionLevel * 3;
-
-		if (settings.lossy)
-			settings.qualityOrder = args_.qualityCompressionLevel * 3;
-		else
-			settings.qualityOrder = args_.qualityCompressionLevel;
-
-		settings.tagPreserveFlags = args_.tagPreserveFlags;
-		settings.calculateCrc32 = args_.calculateCrc32;
-
-		return settings;
-	}
 };
 
 class DsrcCompressorST : public IDsrcOperator
 {
 public:
-	bool Process(const InputParameters& args_);
+	bool Process(const std::string& fastqFilename_,
+				 const std::string& dsrcFilename_,
+				 const DsrcCompressionSettings& compSettings_,
+				 bool useFastqStdIo_,
+				 uint32 qualityOffset_);
 };
 
 class DsrcDecompressorST : public IDsrcOperator
 {
 public:
-	bool Process(const InputParameters& args_);
+	bool Process(const std::string& fastqFilename_,
+				 const std::string& dsrcFilename_,
+				 bool useFastqStdIo_);
 };
 
 class DsrcCompressorMT : public IDsrcOperator
 {
 public:
-	bool Process(const InputParameters& args_);
+	bool Process(const std::string& fastqFilename_,
+				 const std::string& dsrcFilename_,
+				 const DsrcCompressionSettings& compSettings_,
+				 uint32 threadNum_,
+				 bool useFastqStdIo_,
+				 uint32 qualityOffset_);
 };
 
 class DsrcDecompressorMT : public IDsrcOperator
 {
 public:
-	bool Process(const InputParameters& args_);
+	bool Process(const std::string& fastqFilename_,
+				 const std::string& dsrcFilename_,
+				 uint32 threadNum_,
+				 bool useFastqStdIo_);
 };
 
 } // namespace comp

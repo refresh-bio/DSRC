@@ -13,179 +13,224 @@
 #include "Buffer.h"
 #include "DataStream.h"
 #include "FastqStream.h"
+#include "FastqParser.h"
+
 
 namespace dsrc
 {
 
-namespace wrap
+namespace ext
 {
 
-struct IFastqStream::BufferImpl
+struct FastqFile::FastqFileImpl
 {
+	static const uint64 DefaultBufferSize = 1 << 12;
+
+	enum StreamMode
+	{
+		ModeNone = 0,
+		ModeRead,
+		ModeWrite
+	};
+
+	core::IDataStream* stream;
 	core::Buffer buffer;
 	uint64 size;
 	uint64 pos;
+	StreamMode mode;
 
-	BufferImpl(uint64 bufferSize_)
-		:	buffer(bufferSize_)
+	FastqFileImpl(uint64 bufferSize_ = DefaultBufferSize)
+		:	stream(NULL)
+		,	buffer(bufferSize_)
 		,	size(0)
 		,	pos(0)
+		,	mode(ModeNone)
 	{}
-};
 
-IFastqStream::IFastqStream()
-	:	mode(ModeNone)
-	,	ioBuffer(NULL)
-{
-	ioBuffer = new BufferImpl(DefaultBufferSize);
-}
-
-IFastqStream::~IFastqStream()
-{
-	delete ioBuffer;
-}
-
-void IFastqStream::Open(StreamMode mode_)
-{
-	if (mode != ModeNone)
-		throw DsrcException("Invalid state");
-
-	mode = mode_;
-	ioBuffer->size = 0;
-	ioBuffer->pos = 0;
-}
-
-void IFastqStream::Close()
-{
-	if (mode == ModeNone)
-		throw DsrcException("Invalid state");
-
-	mode = ModeNone;
-	ioBuffer->size = 0;
-	ioBuffer->pos = 0;
-}
-
-bool IFastqStream::ReadString(std::string& str_)
-{
-	str_.clear();
-
-	const char* data = (const char*)ioBuffer->buffer.Pointer();
-	for ( ; ; )
+	bool Open(StreamMode mode_)
 	{
-		if (ioBuffer->pos >= ioBuffer->size)
-		{
-			ioBuffer->pos = 0;
-			ioBuffer->size = ReadBuffer(ioBuffer->buffer.Pointer(), ioBuffer->buffer.Size());
-			ASSERT(ioBuffer->size <= ioBuffer->buffer.Size());
+		if (mode == ModeNone)
+			return false;
 
-			if (ioBuffer->size == 0)
+		mode = mode_;
+		size = 0;
+		pos = 0;
+		return true;
+	}
+
+	void Close()
+	{
+		mode = ModeNone;
+		size = 0;
+		pos = 0;
+	}
+
+	uint64 ReadBuffer(byte* mem_, uint64 size_)
+	{
+		ASSERT(mode == ModeRead);
+		return stream->PerformIo(mem_, size_);
+	}
+
+	uint64 WriteBuffer(byte* mem_, uint64 size_)
+	{
+		ASSERT(mode == ModeWrite);
+		return stream->PerformIo(mem_, size_);
+	}
+
+	bool ReadString(std::string& str_)
+	{
+		str_.clear();
+
+		const char* data = (const char*)buffer.Pointer();
+		for ( ; ; )
+		{
+			if (pos >= size)
+			{
+				FeedBuffer();
+
+				if (size == 0)
+					break;
+			}
+
+			ASSERT(pos < buffer.Size());
+
+			char c = data[pos++];
+			if (c == '\n')
 				break;
+
+			str_.push_back(c);
 		}
 
-		ASSERT(ioBuffer->pos < ioBuffer->buffer.Size());
-
-		char c = data[ioBuffer->pos++];
-		if (c == '\n')
-			break;
-
-		str_.push_back(c);
+		return str_.length() > 0;
 	}
 
-	return str_.length() > 0;
-}
-
-void IFastqStream::WriteString(const std::string& str_)
-{
-	char* data = (char*)ioBuffer->buffer.Pointer();
-	if (str_.length() + ioBuffer->pos + 1 > ioBuffer->buffer.Size())
+	void WriteString(const std::string& str_)
 	{
-		WriteBuffer(ioBuffer->buffer.Pointer(), ioBuffer->pos);
-		ioBuffer->pos = 0;
+		char* data = (char*)buffer.Pointer();
+		if (str_.length() + pos + 1 > buffer.Size())
+		{
+			WriteBuffer(buffer.Pointer(), pos);
+			pos = 0;
+		}
+
+		std::copy(str_.c_str(), str_.c_str() + str_.length(), data + pos);
+		pos += str_.length();
+		data[pos++] = '\n';
 	}
 
-	std::copy(str_.c_str(), str_.c_str() + str_.length(), data + ioBuffer->pos);
-	ioBuffer->pos += str_.length();
-	data[ioBuffer->pos++] = '\n';
-}
 
-void IFastqStream::Flush()
-{
-	if (mode == ModeWrite && ioBuffer->pos > 0)
+	void FlushBuffer()
 	{
-		WriteBuffer(ioBuffer->buffer.Pointer(), ioBuffer->pos);
-		ioBuffer->pos = 0;
+		if (mode == ModeWrite && pos > 0)
+		{
+			WriteBuffer(buffer.Pointer(), pos);
+			pos = 0;
+		}
 	}
-}
 
+	bool FeedBuffer()
+	{
+		size = ReadBuffer(buffer.Pointer(), buffer.Size());
+		pos = 0;
 
-struct FastqFile::StreamImpl
-{
-	core::IDataStream* stream;
+		return size > 0;
+	}
 };
 
+
 FastqFile::FastqFile()
-	:	IFastqStream()
-	,	impl(NULL)
+	:	fastqImpl(NULL)
 {
-	impl = new StreamImpl();
+	fastqImpl = new FastqFileImpl();
 }
 
 FastqFile::~FastqFile()
 {
-	if (impl->stream != NULL)
-		delete impl->stream;
-	delete impl;
+	delete fastqImpl;
 }
 
-void FastqFile::Open(const std::string &filename_)
+bool FastqFile::Open(const std::string &filename_)
 {
-	IFastqStream::Open(ModeRead);
+	if (!fastqImpl->Open(FastqFileImpl::ModeRead))
+		return false;
 
-	if (impl->stream != NULL)
-		throw DsrcException("Invalid state");
+	ASSERT(fastqImpl->stream != NULL);
+	fastqImpl->stream = new core::FileStreamReader(filename_.c_str());
 
-	impl->stream = new core::FileStreamReader(filename_.c_str());
+	return true;
 }
 
-void FastqFile::Create(const std::string &filename_)
+bool FastqFile::Create(const std::string &filename_)
 {
-	IFastqStream::Open(ModeWrite);
+	if (!fastqImpl->Open(FastqFileImpl::ModeWrite))
+		return false;
 
-	if (impl->stream != NULL)
-		throw DsrcException("Invalid state");
+	ASSERT(fastqImpl->stream != NULL);
+	fastqImpl->stream = new core::FileStreamWriter(filename_.c_str());
 
-	impl->stream = new core::FileStreamWriter(filename_.c_str());
+	return true;
 }
 
 void FastqFile::Close()
 {
-	if (impl->stream == NULL)
-		throw DsrcException("Invalid state");
+	if (fastqImpl->mode == FastqFileImpl::ModeNone)
+		return;
 
-	Flush();
+	ASSERT(fastqImpl->stream != NULL);
 
-	impl->stream->Close();
+	fastqImpl->FlushBuffer();
 
-	delete impl->stream;
-	impl->stream = NULL;
+	fastqImpl->stream->Close();
+	delete fastqImpl->stream;
+	fastqImpl->stream = NULL;
 
-	IFastqStream::Close();
+	fastqImpl->Close();
 }
 
-uint64 FastqFile::ReadBuffer(byte* mem_, uint64 size_)
+bool FastqFile::ReadNextRecord(FastqRecord& rec_)
 {
-	ASSERT(mode == ModeRead);
+	if (fastqImpl->mode == FastqFileImpl::ModeNone)
+		return false;
 
-	return impl->stream->PerformIo(mem_, size_);
+	return fastqImpl->ReadString(rec_.tag)
+			&& fastqImpl->ReadString(rec_.sequence)
+			&& fastqImpl->ReadString(rec_.plus)
+			&& fastqImpl->ReadString(rec_.quality);
 }
 
-uint64 FastqFile::WriteBuffer(byte* mem_, uint64 size_)
+void FastqFile::WriteNextRecord(const FastqRecord& rec_)
 {
-	ASSERT(mode == ModeWrite);
+	if (fastqImpl->mode == FastqFileImpl::ModeNone)
+		return;
 
-	return impl->stream->PerformIo(mem_, size_);
+	fastqImpl->WriteString(rec_.tag);
+	fastqImpl->WriteString(rec_.sequence);
+	fastqImpl->WriteString(rec_.plus);
+	fastqImpl->WriteString(rec_.quality);
 }
 
-} // namespace wrap
+bool FastqFile::GetFastqDatasetType(FastqDatasetType &type_)
+{
+	if (fastqImpl->mode != FastqFileImpl::ModeRead)
+		return false;
+
+	if (fastqImpl->pos == 0 && fastqImpl->size == 0)
+		fastqImpl->FeedBuffer();
+
+	return FastqFile::AnalyzeFastqDatasetType(type_, fastqImpl->buffer.Pointer(), fastqImpl->buffer.Size());
+}
+
+bool FastqFile::AnalyzeFastqDatasetType(FastqDatasetType &type_, byte *buffer_, uint64 bufferSize_)
+{
+	if (bufferSize_ == 0 || buffer_ == NULL)
+		return false;
+
+	fq::FastqDataChunk fqChunk(buffer_, bufferSize_);
+	fq::FastqParser parser;
+
+	return parser.Analyze(fqChunk, type_, true);
+}
+
+} // namespace ext
 
 } // namespace dsrc

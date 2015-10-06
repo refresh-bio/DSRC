@@ -53,32 +53,6 @@ namespace fq
 {
 
 // ********************************************************************************************
-struct FastqDatasetType
-{
-	static const uint32 AutoQualityOffset = 0;
-	static const uint32 DefaultQualityOffset = 33;
-
-	uint32	qualityOffset;
-	bool	plusRepetition;
-	bool	colorSpace;
-
-
-	FastqDatasetType()
-		:	qualityOffset(AutoQualityOffset)
-		,	plusRepetition(false)
-		,	colorSpace(false)
-	{}
-
-	static FastqDatasetType Default()
-	{
-		FastqDatasetType ds;
-		ds.qualityOffset = AutoQualityOffset;
-		ds.plusRepetition = false;
-		ds.colorSpace = false;
-		return ds;
-	}
-};
-
 struct StreamsInfo
 {
 	enum StreamName
@@ -112,83 +86,58 @@ struct FastqRecord;
 namespace comp
 {
 
+
+// TODO: move from Order to Level
+// TODO: move settings to Globals unifying the settings structure
 struct CompressionSettings
 {
 	static const uint32 MaxDnaOrder = 9;
 	static const uint32 MaxQualityOrder = 6;
+
+	static const uint32 MinFastqBufferSizeMb = 1;
+	static const uint32 MaxFastqBufferSizeMb = 1024;
+
 	static const uint32 DefaultDnaOrder = 0;
 	static const uint32 DefaultQualityOrder = 0;
 	static const uint32 DefaultTagPreserveFlags = 0;		// 0 -- keep all
+	static const uint32 DefaultFastqBufferSizeMb = 8;
 
-	uint32	dnaOrder;
-	uint32	qualityOrder;
-	uint64	tagPreserveFlags;
-	bool	lossy;
-	bool	calculateCrc32;
+	uint32 dnaOrder;
+	uint32 qualityOrder;
+	uint64 tagPreserveFlags;
+	bool lossyQuality;
+	bool calculateCrc32;
+	uint32 fastqBufferSizeMb;
 
 	CompressionSettings()
-		:	dnaOrder(0)
-		,	qualityOrder(0)
+		:	dnaOrder(DefaultDnaOrder)
+		,	qualityOrder(DefaultQualityOrder)
 		,	tagPreserveFlags(DefaultTagPreserveFlags)
-		,	lossy(false)
+		,	lossyQuality(false)
 		,	calculateCrc32(false)
+		,	fastqBufferSizeMb(DefaultFastqBufferSizeMb)
 	{}
 
 	static CompressionSettings Default()
 	{
 		CompressionSettings s;
-		s.dnaOrder = DefaultDnaOrder;
-		s.qualityOrder = DefaultQualityOrder;
-		s.tagPreserveFlags = DefaultTagPreserveFlags;
-		s.lossy = false;
-		s.calculateCrc32 = false;
 		return s;
 	}
-};
 
-struct InputParameters
-{
-	static const uint32 DefaultQualityOffset = fq::FastqDatasetType::AutoQualityOffset;
-	static const uint32 DefaultDnaCompressionLevel = 0;
-	static const uint32 DefaultQualityCompressionLevel = 0;
-	static const uint32 DefaultProcessingThreadNum = 2;
-	static const uint64 DefaultTagPreserveFlags = 0;
-	static const uint32 DefaultFastqBufferSizeMB = 8;
-
-	static const bool DefaultLossyCompressionMode = false;
-	static const bool DefaultCalculateCrc32 = false;
-
-
-	uint32 qualityOffset;
-	uint32 dnaCompressionLevel;
-	uint32 qualityCompressionLevel;
-	uint32 threadNum;
-	uint64 tagPreserveFlags;
-
-	uint32 fastqBufferSizeMB;
-	bool lossyCompression;
-	bool calculateCrc32;
-	bool useFastqStdIo;
-
-	std::string inputFilename;
-	std::string outputFilename;
-
-	InputParameters()
-		:	qualityOffset(DefaultQualityOffset)
-		,	dnaCompressionLevel(DefaultDnaCompressionLevel)
-		,	qualityCompressionLevel(DefaultQualityCompressionLevel)
-		,	threadNum(DefaultProcessingThreadNum)
-		,	tagPreserveFlags(DefaultTagPreserveFlags)
-		,	fastqBufferSizeMB(DefaultFastqBufferSizeMB)
-		,	lossyCompression(DefaultLossyCompressionMode)
-		,	calculateCrc32(DefaultCalculateCrc32)
-		,	useFastqStdIo(false)
-	{}
-
-	static InputParameters Default()
+	static CompressionSettings ConvertFrom(const DsrcCompressionSettings& dsrcSettings_)
 	{
-		InputParameters args;
-		return args;
+		CompressionSettings outSettings;
+		outSettings.dnaOrder = dsrcSettings_.dnaCompressionLevel * 3;
+		if (!dsrcSettings_.lossyQualityCompression)
+			outSettings.qualityOrder = dsrcSettings_.qualityCompressionLevel * 3;
+		else
+			outSettings.qualityOrder = dsrcSettings_.qualityCompressionLevel;
+
+		outSettings.lossyQuality = dsrcSettings_.lossyQualityCompression;
+		outSettings.tagPreserveFlags = dsrcSettings_.tagPreserveMask;
+		outSettings.calculateCrc32 = dsrcSettings_.calculateCrc32;
+		outSettings.fastqBufferSizeMb = dsrcSettings_.fastqBufferSizeMb;
+		return outSettings;
 	}
 };
 

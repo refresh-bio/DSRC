@@ -11,35 +11,60 @@
 #define H_DSRCMODULE
 
 #include "Globals.h"
-#include "Configurable.h"
 
 namespace dsrc
 {
 
-namespace wrap
+namespace ext
 {
 
-class DsrcModule : public Configurable
+
+/********
+ *
+ * DSRC module
+ *
+ * exposes DSRC compression functionality
+ *
+ */
+class DsrcModule
 {
 public:
+	static const uint32 AvailableHardwareThreadsNum;
+
+	static std::string Version();
+
 	DsrcModule();
 	~DsrcModule();
 
-	void Compress(const std::string& inputFilename_, const std::string& outputFilename_);
-	void Decompress(const std::string& inputFilename_, const std::string& outputFilename_);
-	void Usage();
+	bool Compress(const std::string& inFastqFilename_,
+				  const std::string& outDsrcFilename_,
+				  const DsrcCompressionSettings& compSettings_,
+				  uint32 threadsNum_,
+				  bool useFastqStdIo_ = false,
+				  uint32 qualityOffset_ = 0);
+
+	bool Decompress(const std::string& inDsrcFilename_,
+					const std::string& outFastqFilename_,
+					uint32 threadsNum_,
+					bool useFastqStdIo_ = false);
+
+	bool IsError() const;
+	const std::string& GetError() const;
+	void ClearError();
+
+	const std::string& GetLog() const;
+	void ClearLog();
 
 private:
-	static const uint32 HardwareThreadsNo;
+	std::string errorMsg;
+	std::string logMsg;
 
-	// hide
-	using Configurable::IsColorSpace;
-	using Configurable::SetColorSpace;
-	using Configurable::IsPlusRepetition;
-	using Configurable::SetPlusRepetition;
+	void AddError(const std::string& err_);
+	void SetError(const std::string& err_);
+	void AddLog(const std::string& log_);
 };
 
-} // namespace wrap
+} // namespace ext
 
 } // namespace dsrc
 

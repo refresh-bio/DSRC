@@ -155,7 +155,7 @@ void DsrcFileWriter::WriteFileFooter()
 	// store compression info
 	//
 	flags = 0;
-	if (fileFooter.compSettings.lossy)
+	if (fileFooter.compSettings.lossyQuality)
 		flags |= DsrcFileFooter::FLAG_LOSSY_QUALITY;
 	if (fileFooter.compSettings.calculateCrc32)
 		flags |= DsrcFileFooter::FLAG_CALCULATE_CRC32;
@@ -163,6 +163,7 @@ void DsrcFileWriter::WriteFileFooter()
 	writer.PutByte(fileFooter.compSettings.dnaOrder);
 	writer.PutByte(fileFooter.compSettings.qualityOrder);
 	writer.PutDWord(fileFooter.compSettings.tagPreserveFlags);
+	writer.Put2Bytes(fileFooter.compSettings.fastqBufferSizeMb);
 
 	// flush
 	//
@@ -190,25 +191,35 @@ void DsrcFileReader::StartDecompress(const std::string& fileName_)
 	fileStream = new FileStreamReaderExt(fileName_);
 
 	if (fileStream->Size() == 0)
+	{
+		delete fileStream;
+		fileStream = NULL;
+
 		throw DsrcException("Empty file.");
+	}
 
 	// Read file header
 	std::fill((uchar*)&fileHeader, (uchar*)&fileHeader + sizeof(DsrcFileHeader), 0);
 	ReadFileHeader();
 
 	// Check version compatibility
-	if (!(fileHeader.versionMajor == DsrcFileHeader::VersionMajor && fileHeader.versionMinor == DsrcFileHeader::VersionMinor))
+	if (fileHeader.versionMajor != DsrcFileHeader::VersionMajor)
 	{
 		//! TODO: add old file version checking
 		delete fileStream;
 		fileStream = NULL;
-		throw DsrcException("Invalid archive or old unsupported version");
+
+		if (fileHeader.versionMajor < DsrcFileHeader::VersionMajor)
+			throw DsrcException("Invalid or old unsupported DSRC archive");
+		else
+			throw DsrcException("Invalid archive or using outdated DSRC application");
 	}
 
 	if ((fileHeader.blockCount == 0ULL) || fileHeader.footerOffset + (uint64)fileHeader.footerSize > fileStream->Size())
 	{
 		delete fileStream;
 		fileStream = NULL;
+
 		throw DsrcException("Corrupted DSRC archive header");
 	}
 
@@ -224,6 +235,7 @@ void DsrcFileReader::StartDecompress(const std::string& fileName_)
 	{
 		delete fileStream;
 		fileStream = NULL;
+
 		throw DsrcException("Corrupted DSRC archive footer");
 	}
 
@@ -306,11 +318,21 @@ void DsrcFileReader::ReadFileFooter()
 	// read compression info
 	//
 	flags = reader.GetByte();
-	fileFooter.compSettings.lossy = (flags & DsrcFileFooter::FLAG_LOSSY_QUALITY);
+	fileFooter.compSettings.lossyQuality = (flags & DsrcFileFooter::FLAG_LOSSY_QUALITY);
 	fileFooter.compSettings.calculateCrc32 = (flags & DsrcFileFooter::FLAG_CALCULATE_CRC32);
 	fileFooter.compSettings.dnaOrder = reader.GetByte();
 	fileFooter.compSettings.qualityOrder = reader.GetByte();
 	fileFooter.compSettings.tagPreserveFlags = reader.GetDWord();
+
+	// features supported from versions prior
+	if (fileHeader.versionMinor >= 1)
+	{
+		fileFooter.compSettings.fastqBufferSizeMb = reader.Get2Bytes();
+	}
+	else
+	{
+		fileFooter.compSettings.fastqBufferSizeMb = CompressionSettings::MinFastqBufferSizeMb;
+	}
 }
 
 } // namespace comp

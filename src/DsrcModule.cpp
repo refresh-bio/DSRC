@@ -29,72 +29,193 @@ namespace dsrc
 
 using namespace comp;
 
-namespace wrap
+namespace ext
 {
 
-const uint32 DsrcModule::HardwareThreadsNo = th::thread::hardware_concurrency();
+const uint32 DsrcModule::AvailableHardwareThreadsNum = th::thread::hardware_concurrency();
+
+
+
+// TODO: externalize the version and build date string in makefile
+std::string DsrcModule::Version()
+{
+	return std::string("2.1.0 @ 05.10.2015");
+}
+
 
 DsrcModule::DsrcModule()
-{
-	SetThreadsNumber(HardwareThreadsNo);
-}
+{}
 
 DsrcModule::~DsrcModule()
+{}
+
+bool DsrcModule::Compress(const std::string &inFastqFilename_,
+						  const std::string &outDsrcFilename_,
+						  const DsrcCompressionSettings& compSettings_,
+						  uint32 threadsNum_,
+						  bool useFastqStdIo_,
+						  uint32 qualityOffset_)
 {
+	if (IsError())
+		ClearError();
 
-}
+	// check input params
+	//
+	if (outDsrcFilename_.length() == 0)
+		AddError("no output DSRC file specified");
 
-void DsrcModule::Compress(const std::string &inputFilename_, const std::string &outputFilename_)
-{
-	IDsrcOperator* dsrc;
+	if (inFastqFilename_.length() == 0 && !useFastqStdIo_)
+		AddError("no input FASTQ file specified");
 
-	if (GetThreadsNumber() > 0)
-		dsrc = new DsrcCompressorMT();
-	else
-		dsrc = new DsrcCompressorST();
+	if (compSettings_.dnaCompressionLevel > DsrcCompressionSettings::MaxDnaCompressionLevel)
+		AddError("invalid DNA compression mode specified [0-3]\n");
 
-	InputParameters params = *(const InputParameters*)GetInputParameters();
-	params.inputFilename = inputFilename_;
-	params.outputFilename = outputFilename_;
-	if (!dsrc->Process(params))
+	if (compSettings_.qualityCompressionLevel > DsrcCompressionSettings::MaxQualityCompressionLevel)
+		AddError("invalid Quality compression mode specified [0-2]\n");
+
+	if ( !(compSettings_.fastqBufferSizeMb >= DsrcCompressionSettings::MinFastqBufferSizeMB
+		   && compSettings_.fastqBufferSizeMb <= DsrcCompressionSettings::MaxFastqBufferSizeMB) )
 	{
-		std::string err = dsrc->GetError();
-		delete dsrc;
-
-		throw DsrcException(err);
+		AddError("invalid fastq buffer size specified [1-1024] \n");
 	}
 
-	delete dsrc;
-}
-
-void DsrcModule::Decompress(const std::string &inputFilename_, const std::string &outputFilename_)
-{
-	IDsrcOperator* dsrc;
-
-	if (GetThreadsNumber() > 0)
-		dsrc = new DsrcDecompressorMT();
-	else
-		dsrc = new DsrcDecompressorST();
-
-	InputParameters params = *(const InputParameters*)GetInputParameters();
-	params.inputFilename = inputFilename_;
-	params.outputFilename = outputFilename_;
-	if (!dsrc->Process(params))
+	if (qualityOffset_ != FastqDatasetType::AutoQualityOffsetSelect
+			&& !(qualityOffset_ >= 33 && qualityOffset_ <= 64) )
 	{
-		std::string err = dsrc->GetError();
-		delete dsrc;
-
-		throw DsrcException(err);
+		AddError("invalid Quality offset mode specified [33, 64]");
 	}
 
-	delete dsrc;
+	if (IsError())
+		return false;
+
+
+	// compress
+	//
+	if (threadsNum_ > 0)
+	{
+		DsrcCompressorMT dsrc;
+		if (!dsrc.Process(inFastqFilename_, outDsrcFilename_, compSettings_,
+						  threadsNum_, useFastqStdIo_, qualityOffset_))
+		{
+			SetError(dsrc.GetError());
+			return false;
+		}
+		if (dsrc.GetLog().length() > 0)
+			AddLog(dsrc.GetLog());
+	}
+	else
+	{
+		DsrcCompressorST dsrc;
+		if (!dsrc.Process(inFastqFilename_, outDsrcFilename_, compSettings_,
+						  useFastqStdIo_, qualityOffset_))
+		{
+			SetError(dsrc.GetError());
+			return false;
+		}
+		if (dsrc.GetLog().length() > 0)
+			AddLog(dsrc.GetLog());
+	}
+	return true;
 }
 
-void DsrcModule::Usage()
+bool DsrcModule::Decompress(const std::string &inDsrcFilename_,
+							const std::string &outFastqFilename_,
+							uint32 threadsNum_,
+							bool useFastqStdIo_)
 {
-	std::cerr << "DSRC 2.00b release\n";
+	if (IsError())
+		ClearError();
+
+	// check input params
+	//
+	if (inDsrcFilename_.length() == 0)
+		AddError("no input DSRC file specified");
+
+	if (outFastqFilename_.length() == 0 && !useFastqStdIo_)
+		AddError("no input FASTQ file specified");
+
+	if (IsError())
+		return false;
+
+
+	// decompress
+	//
+	if (threadsNum_ > 0)
+	{
+		DsrcDecompressorMT dsrc;
+		if (!dsrc.Process(outFastqFilename_,
+						  inDsrcFilename_,
+						  threadsNum_,
+						  useFastqStdIo_))
+		{
+			SetError(dsrc.GetError());
+			return false;
+		}
+		if (dsrc.GetLog().length() > 0)
+			AddLog(dsrc.GetLog());
+	}
+	else
+	{
+		DsrcDecompressorST dsrc;
+		if (!dsrc.Process(outFastqFilename_,
+						  inDsrcFilename_,
+						  useFastqStdIo_))
+		{
+			SetError(dsrc.GetError());
+			return false;
+		}
+		if (dsrc.GetLog().length() > 0)
+			AddLog(dsrc.GetLog());
+	}
+	return true;
 }
 
-} // namespace wrap
+
+// error handling
+//
+bool DsrcModule::IsError() const
+{
+	return errorMsg.length() > 0;
+}
+
+const std::string& DsrcModule::GetError() const
+{
+	return errorMsg;
+}
+
+void DsrcModule::AddError(const std::string& err_)
+{
+	ASSERT(err_.length() > 0);
+	errorMsg += "Error: " + err_ + "\n";
+}
+
+void DsrcModule::SetError(const std::string& err_)
+{
+	ASSERT(err_.length() > 0);
+	errorMsg = err_;
+}
+
+void DsrcModule::ClearError()
+{
+	errorMsg.clear();
+}
+
+const std::string& DsrcModule::GetLog() const
+{
+	return logMsg;
+}
+
+void DsrcModule::AddLog(const std::string& log_)
+{
+	ASSERT(log_.length() > 0);
+	logMsg += log_ + "\n";
+}
+
+void DsrcModule::ClearLog()
+{
+	logMsg.clear();
+}
+
+} // namespace ext
 
 } // namespace dsrc
