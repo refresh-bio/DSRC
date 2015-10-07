@@ -49,7 +49,7 @@ struct FastqFile::FastqFileImpl
 
 	bool Open(StreamMode mode_)
 	{
-		if (mode == ModeNone)
+		if (mode != ModeNone)
 			return false;
 
 		mode = mode_;
@@ -154,7 +154,7 @@ bool FastqFile::Open(const std::string &filename_)
 	if (!fastqImpl->Open(FastqFileImpl::ModeRead))
 		return false;
 
-	ASSERT(fastqImpl->stream != NULL);
+	ASSERT(fastqImpl->stream == NULL);
 	fastqImpl->stream = new core::FileStreamReader(filename_.c_str());
 
 	return true;
@@ -165,7 +165,7 @@ bool FastqFile::Create(const std::string &filename_)
 	if (!fastqImpl->Open(FastqFileImpl::ModeWrite))
 		return false;
 
-	ASSERT(fastqImpl->stream != NULL);
+	ASSERT(fastqImpl->stream == NULL);
 	fastqImpl->stream = new core::FileStreamWriter(filename_.c_str());
 
 	return true;

@@ -5,8 +5,8 @@ using namespace dsrc::lib;
 
 
 void PrintMessage();
-int CompressFile_Illumina_Lossy(const char* inFilename_, const char* outFilename_);
-int CompressFile_Solid_Lossless(const char* inFilename_, const char* outFilename_);
+int CompressFile(const char* inFilename_, const char* outFilename_);
+int CompressFile_lossy(const char* inFilename_, const char* outFilename_);
 int DecompressFile(const char* inFilename_, const char* outFilename_);
 
 
@@ -18,19 +18,19 @@ int main(int argc_, char* argv_[])
 		return -1;
 	}
 
-	bool useSolid = argc_ == 5 && argv_[2][0] == 'S';
 	char option = argv_[1][0];
+	bool lossyMode = argc_ == 5 && argv_[2][0] == 'L';
 	const char* inFilename = argv_[argc_-2];
 	const char* outFilename = argv_[argc_-1];
 
 	if (option == 'c')
 	{
-		if (useSolid)
-			return CompressFile_Solid_Lossless(inFilename, outFilename);
+		if (lossyMode)
+			return CompressFile_lossy(inFilename, outFilename);
 		else
-			return CompressFile_Illumina_Lossy(inFilename, outFilename);
+			return CompressFile(inFilename, outFilename);
 	}
-	if (option == 'd')
+	else if (option == 'd')
 	{
 		return DecompressFile(inFilename, outFilename);
 	}
@@ -38,14 +38,12 @@ int main(int argc_, char* argv_[])
 	return -1;
 }
 
-
 void PrintMessage()
 {
-	std::cerr << "usage: example1 <c|d> [S] <in_filename> <out_filename>" << std::endl;
+	std::cerr << "usage: example1 <c|d> [L] <in_filename> <out_filename>" << std::endl;
 }
 
-
-int CompressFile_Illumina_Lossy(const char* inFilename_, const char* outFilename_)
+int CompressFile(const char* inFilename_, const char* outFilename_)
 {
 	// 1. Open FASTQ file
 	//
@@ -56,27 +54,17 @@ int CompressFile_Illumina_Lossy(const char* inFilename_, const char* outFilename
 		return -1;
 	}
 
-
-	// 2. Create and configure DSRC archive records writer
-	//
-	// specify DSRC archive compression settings
+	// 2. Create and configure DSRC archive records writer with comp. settings:
+	// lossless mode (by default) with 'fast' performance setting
+	// (corresponds to '-m0' switch in DSRC binary)
 	DsrcCompressionSettings settings;
-	settings.lossyQualityCompression = true;
-	settings.tagPreserveMask = FieldMask().AddField(1).AddField(2).GetMask();
-	settings.dnaCompressionLevel = 2;
-	settings.qualityCompressionLevel = 2;
-	settings.fastqBufferSizeMb = 256;
-
-	// specify explicitely input FASTQ dataset type
-	FastqDatasetType datasetType;
-	datasetType.plusRepetition = false;
-	datasetType.colorSpace = false;
+	settings.dnaCompressionLevel = 0;
+	settings.qualityCompressionLevel = 0;
+	settings.fastqBufferSizeMb = 8;
 
 	// initialize compression routine with prepared settings
 	DsrcArchiveRecordsWriter archive;
-	if (!archive.StartCompress(outFilename_,
-							   settings,
-							   datasetType))
+	if (!archive.StartCompress(outFilename_, settings))
 	{
 		fastqFile.Close();
 
@@ -84,7 +72,6 @@ int CompressFile_Illumina_Lossy(const char* inFilename_, const char* outFilename
 		std::cerr << archive.GetError() << std::endl;
 		return -1;
 	}
-
 
 	// 3. When configured, start compression
 	//
@@ -108,35 +95,37 @@ int CompressFile_Illumina_Lossy(const char* inFilename_, const char* outFilename
 }
 
 
-int CompressFile_Solid_Lossless(const char* inFilename_, const char* outFilename_)
+int CompressFile_lossy(const char* inFilename_, const char* outFilename_)
 {
-	using namespace dsrc::lib;
-
 	// 1. Open FASTQ file
 	//
 	FastqFile fastqFile;
-	if (!fastqFile.Open(inFilename_))			// TODO: analyze the dataset type
+	if (!fastqFile.Open(inFilename_))		// TODO: analyze the dataset type
 	{
 		std::cerr << "Error: cannot open FASTQ file: " << inFilename_ << std::endl;
 		return -1;
 	}
 
-	// 2. Create and configure DSRC archive
-	//
+	// 2. Create and configure DSRC archive records writer with settings:
+	// use 'max' ratio compression mode
+	// (corresponds to '-m2' switch in DSRC binary)
 	DsrcCompressionSettings settings;
-	settings.dnaCompressionLevel = 2;
-	settings.qualityCompressionLevel = 1;
-	settings.fastqBufferSizeMb = 64;
+	settings.dnaCompressionLevel = 3;
+	settings.qualityCompressionLevel = 2;
+	settings.fastqBufferSizeMb = 256;
 
-	FastqDatasetType datasetType;
-	datasetType.colorSpace = true;
-	datasetType.plusRepetition = false;	// discard repeated TAG information in "+" lines
+	// set lossy mode with Illumina 8-binning qualities scheme
+	settings.lossyQualityCompression = true;
 
+	// keep only 2 first tokens in read tag field
+	settings.tagPreserveMask = FieldMask().AddField(1).AddField(2).GetMask();
+
+	// initialize compression routine with prepared settings
 	DsrcArchiveRecordsWriter archive;
-	if (!archive.StartCompress(outFilename_,
-							   settings,
-							   datasetType))
+	if (!archive.StartCompress(outFilename_, settings))
 	{
+		fastqFile.Close();
+
 		std::cerr << "Error!" << std::endl;
 		std::cerr << archive.GetError() << std::endl;
 		return -1;
@@ -144,7 +133,7 @@ int CompressFile_Solid_Lossless(const char* inFilename_, const char* outFilename
 
 	// 3. When configured, start compression
 	//
-	long int recCount = 0;
+	int recCount = 0;
 	FastqRecord rec;
 	while (fastqFile.ReadNextRecord(rec))
 	{

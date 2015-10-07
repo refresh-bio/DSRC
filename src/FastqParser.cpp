@@ -137,6 +137,83 @@ bool FastqParser::Analyze(const FastqDataChunk& chunk_, FastqDatasetType& header
 	return recCount > 1;
 }
 
+bool FastqParser::Analyze(const std::vector<FastqRecord>& records_, uint64 recCount_, bool estimateQualityOffset_, bool& isColorSpace_, uint32& qualityOffset_)
+{
+	uchar minQuality = (uchar)-1;
+	uchar maxQuality = 0;
+	uint32 recCount = 0;
+
+	// in case of very large blocks ( > 64 MB), do not analyze all the records to save resources
+	uint64 maxRecords = MIN(recCount_, 1 << 16);
+
+	isColorSpace_ = false;
+	for (uint64 i = 0; i < maxRecords; ++i)
+	{
+		const FastqRecord& rec = records_[i];
+
+		if (estimateQualityOffset_)
+		{
+			for (uint32 i = 0; i < rec.qualityLen; ++i)
+			{
+				minQuality = MIN(minQuality, rec.quality[i]);
+				maxQuality = MAX(maxQuality, rec.quality[i]);
+			}
+		}
+
+		// analyze if DNA is in color space
+		//
+		ASSERT(rec.sequenceLen > 0);
+		bool colorEnc = (rec.sequence[1] >= '0' && rec.sequence[1] <= '3') || rec.sequence[1] == '.';
+		if (recCount != 0)
+		{
+			if (isColorSpace_ != colorEnc)
+			{
+				return false;
+			}
+
+			if (isColorSpace_)
+			{
+				if (rec.sequence[0] >= '0' && rec.sequence[0] <= '3')
+					return false;
+			}
+		}
+		else
+		{
+			isColorSpace_ = colorEnc;
+		}
+
+		recCount++;
+	}
+
+	if (estimateQualityOffset_)
+	{
+		// standard quality scores
+		if (maxQuality <= 74)
+		{
+			if (minQuality >= 33)
+				qualityOffset_ = 33;				// standard Sanger / Illumina 1.8+
+		}
+		else if (maxQuality <= 105)
+		{
+			if (minQuality >= 64)
+				qualityOffset_ = 64;				// Illumina 1.3-1.8
+			else if (minQuality >= 59)
+				qualityOffset_ = 59;				// Solexa
+		}
+
+		// check non-standard
+		if (qualityOffset_ == 0)
+		{
+			if (minQuality >= 33)
+				qualityOffset_ = 33;
+			else
+				return false;
+		}
+	}
+
+	return recCount > 1;
+}
+
 uint64 FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_, StreamsInfo& streamsInfo_)
 {
 	ASSERT(buffer == NULL);
@@ -227,6 +304,10 @@ bool FastqParserExt::ReadNextRecord(FastqRecord &rec_, uchar *tagBuffer_, uint64
 		}
 		fieldBeginPos = i + 1;
 	}
+
+	// skip copying the separator after the last token
+	if (bufferPos > 0 && bufferPos != fieldBeginPos)
+		bufferPos -= 1;
 
 	ASSERT(rec_.titleLen >= bufferPos);
 	totalBytesCut += rec_.titleLen - bufferPos;

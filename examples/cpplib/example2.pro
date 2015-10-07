@@ -6,10 +6,12 @@ CONFIG -= qt
 SOURCES += \
     example2.cpp
 
+QMAKE_CXXFLAGS += -std=c++11
+
 INCLUDEPATH += ../../include/dsrc
 
 # Specify path to DSRC library file
-LIBS += /home/lucas/dev/workspace/dsrc20-dev/lib/libdsrc.a
+LIBS += $$_PRO_FILE_PWD_/../../lib/libdsrc.a
 
 LIBS += -lpthread
-LIBS += -lboost_thread
+#LIBS += -lboost_thread

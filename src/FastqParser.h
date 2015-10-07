@@ -24,11 +24,23 @@ namespace fq
 class FastqParser
 {
 public:
+	static bool Analyze(const std::vector<FastqRecord>& records_,
+						uint64 recCount_,
+						bool estimateQualityOffset_,
+						bool& isColorSpace_,
+						uint32& qualityOffset_);
+
+
 	FastqParser();
 
-	uint64 ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_,
-					 uint64& rec_count_, StreamsInfo& streamsInfo_);
-	bool Analyze(const FastqDataChunk& chunk_, FastqDatasetType& header_, bool estimateQualityOffset_ = false);
+	uint64 ParseFrom(const FastqDataChunk& chunk_,
+					 std::vector<FastqRecord>& records_,
+					 uint64& rec_count_,
+					 StreamsInfo& streamsInfo_);
+
+	bool Analyze(const FastqDataChunk& chunk_,
+				 FastqDatasetType& header_,
+				 bool estimateQualityOffset_ = false);
 
 protected:
 	core::Buffer* buffer;

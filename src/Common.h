@@ -128,7 +128,7 @@ struct CompressionSettings
 	{
 		CompressionSettings outSettings;
 		outSettings.dnaOrder = dsrcSettings_.dnaCompressionLevel * 3;
-		if (!dsrcSettings_.lossyQualityCompression)
+		if (dsrcSettings_.lossyQualityCompression)
 			outSettings.qualityOrder = dsrcSettings_.qualityCompressionLevel * 3;
 		else
 			outSettings.qualityOrder = dsrcSettings_.qualityCompressionLevel;

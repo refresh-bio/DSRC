@@ -34,7 +34,8 @@ public:
 
 	virtual bool StartCompress(const std::string& dsrcFilename_,
 							   const DsrcCompressionSettings& compressionSettings_,
-							   const FastqDatasetType& datasetType_ = FastqDatasetType::Deault()) = 0;
+							   uint32 threadsNum_ = 1,				// for future use, currently only 1
+							   uint32 qualityOffset_ = 0) = 0;		// auto selection of quality offset: 0
 	virtual void FinishCompress() = 0;
 
 	bool IsError() const;
@@ -53,7 +54,8 @@ public:
 	DsrcArchiveReader();
 	virtual ~DsrcArchiveReader();
 
-	virtual bool StartDecompress(const std::string& dsrcFilename_) = 0;
+	virtual bool StartDecompress(const std::string& dsrcFilename_,
+								 uint32 threadsNum_ = 1) = 0;		// for future use, currently only 1
 	virtual void FinishDecompress() = 0;
 
 	bool IsError() const;
@@ -82,10 +84,11 @@ public:
 
 	bool StartCompress(const std::string& dsrcFilename_,
 					   const DsrcCompressionSettings& compressionSettings_,
-					   const FastqDatasetType& datasetType_ = FastqDatasetType::Deault());
+					   uint32 threadsNum_ = 1,				// for future use, currently only 1
+					   uint32 qualityOffset_ = 0);			// auto selection of quality offset: 0
 	void FinishCompress();
 
-	void WriteNextRecord(const FastqRecord& rec_);
+	bool WriteNextRecord(const FastqRecord& rec_);
 
 protected:
 	struct RecordsWriterImpl;
@@ -99,7 +102,8 @@ public:
 	DsrcArchiveRecordsReader();
 	~DsrcArchiveRecordsReader();
 
-	bool StartDecompress(const std::string &dsrcFilename_);
+	bool StartDecompress(const std::string &dsrcFilename_,
+						 uint32 threadsNum_ = 1);
 	void FinishDecompress();
 
 	bool ReadNextRecord(FastqRecord& rec_);
@@ -126,7 +130,8 @@ public:
 
 	bool StartCompress(const std::string& dsrcFilename_,
 					   const DsrcCompressionSettings& compressionSettings_,
-					   const FastqDatasetType& datasetType_ = FastqDatasetType::Deault());
+					   uint32 threadsNum_ = 1,				// for future use, currently only 1
+					   uint32 qualityOffset_ = 0);			// auto selection of quality offset: 0
 	void FinishCompress();
 
 	// returns the number of compressed bytes written
@@ -144,16 +149,21 @@ public:
 	DsrcArchiveBlocksReaderST();
 	~DsrcArchiveBlocksReaderST();
 
-	bool StartDecompress(const std::string &dsrcFilename_);
+	bool StartDecompress(const std::string &dsrcFilename_,
+						 uint32 threadsNum_ = 1);			// for future use, currently only 1
 	void FinishDecompress();
 
 	// returns number of bytes read
-	uint64 ReadNextBlock(byte* buffer_, uint64 bufferSize_);			// use BlockCompressor@Read
+	uint64 ReadNextBlock(byte* buffer_, uint64 bufferSize_);
 
 private:
 	struct BlockReaderImpl;
 	BlockReaderImpl* readerImpl;
 };
+
+
+typedef DsrcArchiveBlocksWriterST DsrcArchiveBlocksWriter;
+typedef DsrcArchiveBlocksReaderST DsrcArchiveBlocksReader;
 
 
 } // namespace ext

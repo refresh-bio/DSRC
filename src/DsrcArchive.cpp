@@ -7,9 +7,12 @@
   Version: 2.00
 */
 
+#include <algorithm>
+
 #include "../include/dsrc/DsrcArchive.h"
 
 #include "RecordsBlockCompressor.h"
+#include "FastqParser.h"
 #include "DsrcFile.h"
 #include "DsrcIo.h"
 #include "utils.h"
@@ -49,8 +52,12 @@ struct DsrcArchiveWriter::ArchiveWriterImpl : public ArchiveImplBase
 	DsrcFileWriter* dsrcWriter;
 	std::string errorMsg;
 
+	bool isDatasetTypeKnown;
+	uint32 fastqQualityOffset;
+
 	ArchiveWriterImpl()
 		:	dsrcWriter(NULL)
+		,	isDatasetTypeKnown(false)
 	{}
 
 	~ArchiveWriterImpl()
@@ -64,12 +71,12 @@ struct DsrcArchiveWriter::ArchiveWriterImpl : public ArchiveImplBase
 
 	bool StartCompress(const std::string& dsrcFilename_,
 					   const DsrcCompressionSettings& compressionSettings_,
-					   const FastqDatasetType& datasetType_)
+					   uint32 qualityOffset_)
 	{
 		if (IsError())
 			ClearError();
 
-		if (!ValidateInputArguments(dsrcFilename_, compressionSettings_, datasetType_))
+		if (!ValidateInputArguments(dsrcFilename_, compressionSettings_, qualityOffset_))
 			return false;
 
 		if (dsrcWriter == NULL)
@@ -80,11 +87,15 @@ struct DsrcArchiveWriter::ArchiveWriterImpl : public ArchiveImplBase
 		// TODO: uniform settings
 		compSettings = CompressionSettings::ConvertFrom(compressionSettings_);
 		dsrcWriter->SetCompressionSettings(compSettings);
-		dsrcWriter->SetDatasetType(datasetType_);
 
+		// we will set the dataset type later, explicitely after analysis
+		isDatasetTypeKnown = false;
+		fastqQualityOffset = qualityOffset_;
+
+		dsrcWriter->SetDatasetType(FastqDatasetType::Default());
 		if(compressor == NULL)
 		{
-			compressor = new BlockCompressor(datasetType_, compSettings);
+			compressor = new BlockCompressor(FastqDatasetType::Default(), compSettings);
 			dsrcChunk = new DsrcDataChunk();
 		}
 		compressor->Reset();
@@ -98,7 +109,16 @@ struct DsrcArchiveWriter::ArchiveWriterImpl : public ArchiveImplBase
 			AddError(e.what());
 		}
 
-		return IsError();
+		return !IsError();
+	}
+
+	void SetFastqDatasetType(const FastqDatasetType& type_)
+	{
+		ASSERT(compressor != NULL);
+		ASSERT(dsrcWriter != NULL);
+
+		compressor->Reconfigure(type_, compSettings);
+		dsrcWriter->SetDatasetType(type_);
 	}
 
 	void FinishCompress()
@@ -108,7 +128,7 @@ struct DsrcArchiveWriter::ArchiveWriterImpl : public ArchiveImplBase
 
 	bool ValidateInputArguments(const std::string& dsrcFilename_,
 								const DsrcCompressionSettings& compressionSettings_,
-								const FastqDatasetType& datasetType_)
+								uint32 qualityOffset_)
 	{
 		if (dsrcFilename_.length() == 0)
 			AddError("no input DSRC file specified");
@@ -125,13 +145,13 @@ struct DsrcArchiveWriter::ArchiveWriterImpl : public ArchiveImplBase
 			AddError("invalid fastq buffer size specified [1-1024] \n");
 		}
 
-		if (datasetType_.qualityOffset != FastqDatasetType::AutoQualityOffsetSelect
-				&& !(datasetType_.qualityOffset >= 33 && datasetType_.qualityOffset <= 64) )
+		if (qualityOffset_ != FastqDatasetType::AutoQualityOffsetSelect
+				&& !(qualityOffset_ >= 33 && qualityOffset_ <= 64) )
 		{
 			AddError("invalid Quality offset mode specified [33, 64]");
 		}
 
-		return IsError();
+		return !IsError();
 	}
 
 	bool IsError() const
@@ -217,7 +237,7 @@ struct DsrcArchiveReader::ArchiveReaderImpl : public ArchiveImplBase
 		if (dsrcFilename_.length() == 0)
 			AddError("no input DSRC file specified");
 
-		return IsError();
+		return !IsError();
 	}
 
 	bool IsError() const
@@ -293,7 +313,6 @@ void DsrcArchiveReader::ClearError()
 }
 
 
-
 // DSRC archive records writer/reader implementation
 //
 struct DsrcArchiveRecordsWriter::RecordsWriterImpl
@@ -301,9 +320,12 @@ struct DsrcArchiveRecordsWriter::RecordsWriterImpl
 	RecordsBlockCompressor* recordsCompressor;
 	fq::FastqDataChunk* fastqChunk;
 
+	bool fastqHasPlusRepetition;		// used when parsing
+
 	RecordsWriterImpl()
 		:	recordsCompressor(NULL)
 		,	fastqChunk(NULL)
+		,	fastqHasPlusRepetition(false)
 	{}
 
 	~RecordsWriterImpl()
@@ -317,7 +339,7 @@ struct DsrcArchiveRecordsWriter::RecordsWriterImpl
 		ASSERT(fastqChunk == NULL);
 		ASSERT(recordsCompressor == NULL);
 
-		if (fastqChunk != NULL)
+		if (fastqChunk == NULL)
 		{
 			fastqChunk = new fq::FastqDataChunk((uint64)fastqBufferSizeMb_ << 20);
 			recordsCompressor = new RecordsBlockCompressor(compressor_, *fastqChunk);
@@ -356,7 +378,7 @@ struct DsrcArchiveRecordsReader::RecordsReaderImpl
 
 	void CreateCompressorContext(BlockCompressor& compressor_, uint32 fastqBufferSizeMb_)
 	{
-		if (fastqChunk != NULL)
+		if (fastqChunk == NULL)
 		{
 			fastqChunk = new fq::FastqDataChunk((uint64)fastqBufferSizeMb_ << 20);
 			recordsCompressor = new RecordsBlockCompressor(compressor_, *fastqChunk);
@@ -392,32 +414,101 @@ DsrcArchiveRecordsWriter::~DsrcArchiveRecordsWriter()
 
 bool DsrcArchiveRecordsWriter::StartCompress(const std::string &filename_,
 											 const DsrcCompressionSettings &compressionSettings_,
-											 const FastqDatasetType &datasetType_)
+											 uint32 /*threadsNum_*/,
+											 uint32 qualityOffset_)
 {
-	if (!archiveImpl->StartCompress(filename_, compressionSettings_, datasetType_))
+	if (!archiveImpl->StartCompress(filename_, compressionSettings_, qualityOffset_))
 		return false;
 
 	writerImpl->CreateCompressorContext(*archiveImpl->compressor, compressionSettings_.fastqBufferSizeMb);
 
+	// variables used when analysing FASTQ records
+	writerImpl->fastqHasPlusRepetition = false;
+
 	return true;
 }
 
-void DsrcArchiveRecordsWriter::WriteNextRecord(const FastqRecord& rec_)
+bool DsrcArchiveRecordsWriter::WriteNextRecord(const FastqRecord& rec_)
 {
+	if (IsError())
+		return false;
+
 	const uint64 approxRecordSize = rec_.sequence.length() * 2 + rec_.tag.length() * 2;
 
+	// check the plus repetitions consistency while writing records
+	// unfortunately we cannot handle this feature inside FastqParser
+	if (rec_.plus.length() > 1)
+	{
+		if (!writerImpl->fastqHasPlusRepetition)
+			writerImpl->fastqHasPlusRepetition = true;
+	}
+	else if (rec_.plus.length() == 1)
+	{
+		if (writerImpl->fastqHasPlusRepetition)
+		{
+			archiveImpl->AddError("inconsistency in \"+\" lines information content across FASTQ data");
+			return false;
+		}
+	}
+
+
+	// do we have all the data to compresss the next block?
 	if (writerImpl->recordsCompressor->RawChunkSize() + approxRecordSize > (uint64)archiveImpl->compSettings.fastqBufferSizeMb << 20)
 	{
+		// to automatize the dataset type setting, an analysis will be performed after reading the full first block of data
+		if (!archiveImpl->isDatasetTypeKnown)
+		{
+			FastqDatasetType dsType;
+			dsType.qualityOffset = archiveImpl->fastqQualityOffset;
+			dsType.plusRepetition = writerImpl->fastqHasPlusRepetition;
+			if (!writerImpl->recordsCompressor->AnalyzeRecords(dsType.qualityOffset == FastqDatasetType::AutoQualityOffsetSelect,
+															   dsType.colorSpace,
+															   dsType.qualityOffset))
+			{
+				archiveImpl->AddError("problem analyzing FASTQ dataset type");
+				return false;
+			}
+
+			// set the dataset type in DSRC file writer -- was previously in StartCompress()
+			archiveImpl->isDatasetTypeKnown = true;
+			archiveImpl->SetFastqDatasetType(dsType);
+		}
+
 		writerImpl->FlushChunk(*archiveImpl->dsrcWriter, *archiveImpl->dsrcChunk);
 	}
 
 	writerImpl->recordsCompressor->WriteNextRecord(rec_);
+	return true;
 }
 
 void DsrcArchiveRecordsWriter::FinishCompress()
 {
 	if (writerImpl->recordsCompressor->RawChunkSize() > 0)
 	{
+		// handle the case of only one block-archive
+		// to automatize the dataset type setting, an analysis will be performed after reading the full first block of data
+		if (!archiveImpl->isDatasetTypeKnown)
+		{
+			FastqDatasetType dsType;
+			dsType.qualityOffset = archiveImpl->fastqQualityOffset;
+			dsType.plusRepetition = writerImpl->fastqHasPlusRepetition;
+			if (!writerImpl->recordsCompressor->AnalyzeRecords(dsType.qualityOffset == FastqDatasetType::AutoQualityOffsetSelect,
+															   dsType.colorSpace,
+															   dsType.qualityOffset))
+			{
+				archiveImpl->AddError("problem analyzing FASTQ dataset type");
+
+				// we will return here and set an error
+				archiveImpl->FinishCompress();
+				return;
+			}
+
+			// set the dataset type in DSRC file writer -- was previously in StartCompress()
+			archiveImpl->isDatasetTypeKnown = true;
+			archiveImpl->SetFastqDatasetType(dsType);
+		}
+
+
 		writerImpl->FlushChunk(*archiveImpl->dsrcWriter, *archiveImpl->dsrcChunk);
 	}
 
@@ -435,7 +526,8 @@ DsrcArchiveRecordsReader::~DsrcArchiveRecordsReader()
 	delete readerImpl;
 }
 
-bool DsrcArchiveRecordsReader::StartDecompress(const std::string &filename_)
+bool DsrcArchiveRecordsReader::StartDecompress(const std::string &filename_,
+											   uint32 /*threadsNum_*/)
 {
 	if (!archiveImpl->StartDecompress(filename_))
 		return false;
@@ -513,9 +605,10 @@ DsrcArchiveBlocksWriterST::~DsrcArchiveBlocksWriterST()
 
 bool DsrcArchiveBlocksWriterST::StartCompress(const std::string &filename_,
 											  const DsrcCompressionSettings &compressionSettings_,
-											  const FastqDatasetType &datasetType_)
+											  uint32 /*threadsNum_*/,
+											  uint32 qualityOffset_)
 {
-	if (!archiveImpl->StartCompress(filename_, compressionSettings_, datasetType_))
+	if (!archiveImpl->StartCompress(filename_, compressionSettings_, qualityOffset_))
 		return false;
 
 	// WARN: we will create here an additional aux buffer to perform additional
@@ -560,6 +653,26 @@ uint64 DsrcArchiveBlocksWriterST::WriteNextBlock(const byte* buffer_, uint64 buf
 	//
 	// //
 
+
+	// analyze the FASTQ dataset type and if not done before
+	if (!archiveImpl->isDatasetTypeKnown)
+	{
+		FastqDatasetType datasetType;
+		fq::FastqParser parser;
+		if (!parser.Analyze(*writerImpl->fastqChunk,
+							datasetType,
+							archiveImpl->fastqQualityOffset != FastqDatasetType::AutoQualityOffsetSelect))
+		{
+			archiveImpl->AddError("problem analyzing FASTQ dataset type");
+			return 0;
+		}
+
+		archiveImpl->SetFastqDatasetType(datasetType);
+		archiveImpl->isDatasetTypeKnown = true;
+	}
+
+
+	// compress the FASTQ block
 	core::BitMemoryWriter mem(archiveImpl->dsrcChunk->data);
 	archiveImpl->compressor->Store(mem,
 								   writerImpl->rawStreamInfo,
@@ -584,7 +697,8 @@ DsrcArchiveBlocksReaderST::~DsrcArchiveBlocksReaderST()
 	delete readerImpl;
 }
 
-bool DsrcArchiveBlocksReaderST::StartDecompress(const std::string &filename_)
+bool DsrcArchiveBlocksReaderST::StartDecompress(const std::string &filename_,
+												uint32 /*threadsNum*/)
 {
 	if (!archiveImpl->StartDecompress(filename_))
 		return false;
@@ -637,7 +751,7 @@ uint64 DsrcArchiveBlocksReaderST::ReadNextBlock(byte* buffer_, uint64 bufferSize
 		readerImpl->bytesRead = 0;
 	}
 
-	// single-time full copy
+	// single-time full copy of buffer
 	uint64 bytesCopied = 0;
 	if (bufferSize_ > readerImpl->currentBlockSize - readerImpl->bytesRead)
 	{

@@ -162,10 +162,10 @@ struct FastqDatasetType
 	FastqDatasetType()
 		:	colorSpace(DefaultIsColorSpace)
 		,	plusRepetition(DefaultHasPlusRepetition)
-		,	qualityOffset(AutoQualityOffsetSelect)
+		,	qualityOffset(StandardQualityOffset)
 	{}
 
-	static FastqDatasetType Deault()
+	static FastqDatasetType Default()
 	{
 		FastqDatasetType fq;
 		return fq;

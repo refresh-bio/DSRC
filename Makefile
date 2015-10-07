@@ -16,7 +16,7 @@ CXXFLAGS += -Wall
 # compile using c++11
 CXXFLAGS += -std=c++11
 
-DEP_LIBS += -lpthread
+DEP_LIBS += -pthread
 
 
 APP_NAME = dsrc

@@ -59,28 +59,51 @@ BlockCompressor::BlockCompressor(const FastqDatasetType& type_, const Compressio
 {
 	records.resize(8 * 1024);
 
-	if (settings_.lossyQuality)
-		recordsProcessor = new LossyRecordsProcessor(type_.qualityOffset, type_.colorSpace);
-	else
-		recordsProcessor = new LosslessRecordsProcessor(type_.qualityOffset, type_.colorSpace);
+	Configure(type_, settings_, true);
+}
 
-	if (settings_.dnaOrder == 0)
-		dnaModeler = new DnaNormalModelerProxy();
-	else
-		dnaModeler = new DnaOrderModelerProxy(settings_.dnaOrder);
-
-	if (settings_.qualityOrder > 0)
+void BlockCompressor::Configure(const FastqDatasetType& type_, const CompressionSettings& settings_, bool force_)
+{
+	if (settings_.lossyQuality != compSettings.lossyQuality
+			|| type_.qualityOffset != datasetType.qualityOffset
+			|| type_.colorSpace != datasetType.colorSpace
+			|| force_)
 	{
+		TFree(recordsProcessor);
 		if (settings_.lossyQuality)
-			qualityModeler = new QualityOrderModelerProxyLossy(settings_.qualityOrder);
+			recordsProcessor = new LossyRecordsProcessor(type_.qualityOffset, type_.colorSpace);
 		else
-			qualityModeler = new QualityOrderModelerProxyLossless(settings_.qualityOrder);
-	}
-	else
-	{
-		qualityModeler = new QualityNormalModelerProxy(settings_.lossyQuality);
+			recordsProcessor = new LosslessRecordsProcessor(type_.qualityOffset, type_.colorSpace);
 	}
 
+	if (settings_.dnaOrder != compSettings.dnaOrder || force_)
+	{
+		TFree(dnaModeler);
+		if (settings_.dnaOrder == 0)
+			dnaModeler = new DnaNormalModelerProxy();
+		else
+			dnaModeler = new DnaOrderModelerProxy(settings_.dnaOrder);
+	}
+
+	if (settings_.qualityOrder != compSettings.qualityOrder
+			|| settings_.lossyQuality != compSettings.lossyQuality
+			|| force_)
+	{
+		TFree(qualityModeler);
+		if (settings_.qualityOrder > 0)
+		{
+			if (settings_.lossyQuality)
+				qualityModeler = new QualityOrderModelerProxyLossy(settings_.qualityOrder);
+			else
+				qualityModeler = new QualityOrderModelerProxyLossless(settings_.qualityOrder);
+		}
+		else
+		{
+			qualityModeler = new QualityNormalModelerProxy(settings_.lossyQuality);
+		}
+	}
+
+	chunkHeader.checksumFlags = fq::FastqChecksum::CALC_NONE;
 	if (settings_.calculateCrc32)
 	{
 		if (settings_.tagPreserveFlags == CompressionSettings::DefaultTagPreserveFlags)
@@ -91,6 +114,14 @@ BlockCompressor::BlockCompressor(const FastqDatasetType& type_, const Compressio
 		if (!settings_.lossyQuality)
 			chunkHeader.checksumFlags |= fq::FastqChecksum::CALC_QUALITY;
 	}
+
+	datasetType = type_;
+	compSettings = settings_;
+}
+
+void BlockCompressor::Reconfigure(const FastqDatasetType& type_, const CompressionSettings& settings_)
+{
+	Configure(type_, settings_);
 }
 
 

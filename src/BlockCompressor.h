@@ -76,6 +76,18 @@ public:
 
 	void Reset();
 
+	void Reconfigure(const FastqDatasetType& type_, const CompressionSettings& settings_);
+
+	const std::vector<fq::FastqRecord>& GetRecords() const
+	{
+		return records;
+	}
+
+	const CompressionSettings& GetCompressionSettings() const
+	{
+		return compSettings;
+	}
+
 protected:
 	friend class ext::RecordsBlockCompressor;
 
@@ -86,8 +98,8 @@ protected:
 		FLAG_MIXED_FIELD_FORMATTING	= BIT(2)		// this should be handled by TagModelerProxy*
 	};
 
-	const FastqDatasetType datasetType;
-	const CompressionSettings compSettings;
+	FastqDatasetType datasetType;
+	CompressionSettings compSettings;
 
 	std::vector<fq::FastqRecord> records;
 
@@ -121,6 +133,8 @@ protected:
 
 	void ReadDNA(core::BitMemoryReader &memory_);
 	void ReadQuality(core::BitMemoryReader &memory_);
+
+	void Configure(const FastqDatasetType& type_, const CompressionSettings& settings_, bool force_ = false);
 };
 
 } // namespace comp

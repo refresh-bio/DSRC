@@ -118,6 +118,8 @@ public:
 	bool ReadNextRecord(FastqRecord& rec_);
 	void Feed(core::BitMemoryReader &memory_);
 
+	bool AnalyzeRecords(bool estimateQualityOffset_, bool& isColorSpace_, uint32& qualityOffset_);
+
 private:
 	static const uint64 FastqBufferPadding = 1 << 10 << 8;
 	static const uint64 FastqRecordsIncr = 1 << 12;
