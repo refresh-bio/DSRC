@@ -297,6 +297,16 @@ DsrcArchiveReader::~DsrcArchiveReader()
 	delete archiveImpl;
 }
 
+bool DsrcArchiveReader::GetCompressionSettings(DsrcCompressionSettings& settings_) const
+{
+	if (archiveImpl->dsrcReader == NULL)
+		return false;
+
+	settings_ = CompressionSettings::ConvertTo(archiveImpl->dsrcReader->GetCompressionSettings());
+	return true;
+}
+
+
 bool DsrcArchiveReader::IsError() const
 {
 	return archiveImpl->IsError();
@@ -631,7 +641,7 @@ void DsrcArchiveBlocksWriterST::FinishCompress()
 	archiveImpl->FinishCompress();
 }
 
-uint64 DsrcArchiveBlocksWriterST::WriteNextBlock(const byte* buffer_, uint64 bufferSize_)
+unsigned long DsrcArchiveBlocksWriterST::WriteNextBlock(const char* buffer_, unsigned long bufferSize_)
 {
 	ASSERT(writerImpl->fastqChunk != NULL);		// TODO: throw exception when unintialized
 
@@ -724,7 +734,7 @@ void DsrcArchiveBlocksReaderST::FinishDecompress()
 	archiveImpl->FinishDecompress();
 }
 
-uint64 DsrcArchiveBlocksReaderST::ReadNextBlock(byte* buffer_, uint64 bufferSize_)
+unsigned long DsrcArchiveBlocksReaderST::ReadNextBlock(char* buffer_, unsigned long bufferSize_)
 {
 	ASSERT(readerImpl->fastqChunk != NULL);		// TODO: exceptions or '0'
 

@@ -4,7 +4,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
-    example2.cpp
+    example3.cpp
 
 QMAKE_CXXFLAGS += -std=c++11
 

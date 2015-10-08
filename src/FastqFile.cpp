@@ -14,6 +14,7 @@
 #include "DataStream.h"
 #include "FastqStream.h"
 #include "FastqParser.h"
+#include "FastqStream.h"
 
 
 namespace dsrc
@@ -22,205 +23,56 @@ namespace dsrc
 namespace ext
 {
 
-struct FastqFile::FastqFileImpl
+template <class _TFastqStream>
+struct TFastqFileImplBase
 {
-	static const uint64 DefaultBufferSize = 1 << 12;
+	_TFastqStream* stream;
 
-	enum StreamMode
-	{
-		ModeNone = 0,
-		ModeRead,
-		ModeWrite
-	};
-
-	core::IDataStream* stream;
-	core::Buffer buffer;
-	uint64 size;
-	uint64 pos;
-	StreamMode mode;
-
-	FastqFileImpl(uint64 bufferSize_ = DefaultBufferSize)
+	TFastqFileImplBase()
 		:	stream(NULL)
-		,	buffer(bufferSize_)
-		,	size(0)
-		,	pos(0)
-		,	mode(ModeNone)
 	{}
 
-	bool Open(StreamMode mode_)
+	virtual ~TFastqFileImplBase()
+	{}
+
+	virtual bool Open(const std::string& filename_)
 	{
-		if (mode != ModeNone)
+		if (stream != NULL)
 			return false;
 
-		mode = mode_;
-		size = 0;
-		pos = 0;
+		try
+		{
+			stream = new _TFastqStream(filename_);
+		}
+		catch (const DsrcException& )
+		{
+			return false;
+		}
+
 		return true;
 	}
 
-	void Close()
+	virtual void Close()
 	{
-		mode = ModeNone;
-		size = 0;
-		pos = 0;
-	}
-
-	uint64 ReadBuffer(byte* mem_, uint64 size_)
-	{
-		ASSERT(mode == ModeRead);
-		return stream->PerformIo(mem_, size_);
-	}
-
-	uint64 WriteBuffer(byte* mem_, uint64 size_)
-	{
-		ASSERT(mode == ModeWrite);
-		return stream->PerformIo(mem_, size_);
-	}
-
-	bool ReadString(std::string& str_)
-	{
-		str_.clear();
-
-		const char* data = (const char*)buffer.Pointer();
-		for ( ; ; )
+		if (stream != NULL)
 		{
-			if (pos >= size)
-			{
-				FeedBuffer();
-
-				if (size == 0)
-					break;
-			}
-
-			ASSERT(pos < buffer.Size());
-
-			char c = data[pos++];
-			if (c == '\n')
-				break;
-
-			str_.push_back(c);
+			stream->Close();
+			delete stream;
+			stream = NULL;
 		}
-
-		return str_.length() > 0;
-	}
-
-	void WriteString(const std::string& str_)
-	{
-		char* data = (char*)buffer.Pointer();
-		if (str_.length() + pos + 1 > buffer.Size())
-		{
-			WriteBuffer(buffer.Pointer(), pos);
-			pos = 0;
-		}
-
-		std::copy(str_.c_str(), str_.c_str() + str_.length(), data + pos);
-		pos += str_.length();
-		data[pos++] = '\n';
-	}
-
-
-	void FlushBuffer()
-	{
-		if (mode == ModeWrite && pos > 0)
-		{
-			WriteBuffer(buffer.Pointer(), pos);
-			pos = 0;
-		}
-	}
-
-	bool FeedBuffer()
-	{
-		size = ReadBuffer(buffer.Pointer(), buffer.Size());
-		pos = 0;
-
-		return size > 0;
 	}
 };
 
 
-FastqFile::FastqFile()
-	:	fastqImpl(NULL)
-{
-	fastqImpl = new FastqFileImpl();
-}
+// FASTQ file writer/reader implementation
+//
+FastqFileReader::FastqFileReader()
+{}
 
-FastqFile::~FastqFile()
-{
-	delete fastqImpl;
-}
+FastqFileReader::~FastqFileReader()
+{}
 
-bool FastqFile::Open(const std::string &filename_)
-{
-	if (!fastqImpl->Open(FastqFileImpl::ModeRead))
-		return false;
-
-	ASSERT(fastqImpl->stream == NULL);
-	fastqImpl->stream = new core::FileStreamReader(filename_.c_str());
-
-	return true;
-}
-
-bool FastqFile::Create(const std::string &filename_)
-{
-	if (!fastqImpl->Open(FastqFileImpl::ModeWrite))
-		return false;
-
-	ASSERT(fastqImpl->stream == NULL);
-	fastqImpl->stream = new core::FileStreamWriter(filename_.c_str());
-
-	return true;
-}
-
-void FastqFile::Close()
-{
-	if (fastqImpl->mode == FastqFileImpl::ModeNone)
-		return;
-
-	ASSERT(fastqImpl->stream != NULL);
-
-	fastqImpl->FlushBuffer();
-
-	fastqImpl->stream->Close();
-	delete fastqImpl->stream;
-	fastqImpl->stream = NULL;
-
-	fastqImpl->Close();
-}
-
-bool FastqFile::ReadNextRecord(FastqRecord& rec_)
-{
-	if (fastqImpl->mode == FastqFileImpl::ModeNone)
-		return false;
-
-	return fastqImpl->ReadString(rec_.tag)
-			&& fastqImpl->ReadString(rec_.sequence)
-			&& fastqImpl->ReadString(rec_.plus)
-			&& fastqImpl->ReadString(rec_.quality);
-}
-
-void FastqFile::WriteNextRecord(const FastqRecord& rec_)
-{
-	if (fastqImpl->mode == FastqFileImpl::ModeNone)
-		return;
-
-	fastqImpl->WriteString(rec_.tag);
-	fastqImpl->WriteString(rec_.sequence);
-	fastqImpl->WriteString(rec_.plus);
-	fastqImpl->WriteString(rec_.quality);
-}
-
-bool FastqFile::GetFastqDatasetType(FastqDatasetType &type_)
-{
-	if (fastqImpl->mode != FastqFileImpl::ModeRead)
-		return false;
-
-	if (fastqImpl->pos == 0 && fastqImpl->size == 0)
-		fastqImpl->FeedBuffer();
-
-	return FastqFile::AnalyzeFastqDatasetType(type_, fastqImpl->buffer.Pointer(), fastqImpl->buffer.Size());
-}
-
-bool FastqFile::AnalyzeFastqDatasetType(FastqDatasetType &type_, byte *buffer_, uint64 bufferSize_)
+bool FastqFileReader::AnalyzeFastqDatasetType(FastqDatasetType &type_, byte *buffer_, uint64 bufferSize_)
 {
 	if (bufferSize_ == 0 || buffer_ == NULL)
 		return false;
@@ -230,6 +82,270 @@ bool FastqFile::AnalyzeFastqDatasetType(FastqDatasetType &type_, byte *buffer_, 
 
 	return parser.Analyze(fqChunk, type_, true);
 }
+
+
+FastqFileWriter::FastqFileWriter()
+{}
+
+FastqFileWriter::~FastqFileWriter()
+{}
+
+
+// FASTQ file records writer/reader implementation
+//
+struct FastqFileRecordsReader::FastqRecordsReaderImpl : public TFastqFileImplBase<fq::FastqFileReader>
+{
+	static const uint64 DefaultBufferSize = 1 << 13;		// 8K
+	fq::FastqDataChunk buffer;
+	uint64 bufferPos;
+
+	FastqRecordsReaderImpl(uint64 bufferSize_ = DefaultBufferSize)
+		:	buffer(bufferSize_)
+		,	bufferPos(0)
+	{}
+
+	bool ReadString(std::string& str_)
+	{
+		str_.clear();
+
+		if (bufferPos >= buffer.size)
+		{
+			FeedBuffer();
+			if (buffer.size == 0)
+				return false;
+		}
+
+		const char* data = (const char*)buffer.data.Pointer();
+		for ( ; ; )
+		{
+			ASSERT(bufferPos < buffer.size);
+
+			char c = data[bufferPos++];
+			if (c == '\n')
+				break;
+
+			str_.push_back(c);
+
+			// we are sure that whole blocks of FASTQ file are read
+			if (bufferPos >= buffer.size)
+				break;
+		}
+
+		return str_.length() > 0;
+	}
+
+	bool FeedBuffer()
+	{
+		stream->ReadNextChunk(&buffer);
+		bufferPos = 0;
+
+		return buffer.size > 0;
+	}
+};
+
+struct FastqFileRecordsWriter::FastqRecordsWriterImpl: public TFastqFileImplBase<fq::FastqFileWriter>
+{
+	static const uint64 DefaultBufferSize = 1 << 13;		// 8K
+	fq::FastqDataChunk buffer;
+	uint64 bufferPos;
+
+	FastqRecordsWriterImpl(uint64 bufferSize_ = DefaultBufferSize)
+		:	buffer(bufferSize_)
+		,	bufferPos(0)
+	{}
+
+	bool WriteString(const std::string& str_)
+	{
+		char* data = (char*)buffer.data.Pointer();
+		if (str_.length() + bufferPos + 1 > buffer.data.Size())
+		{
+			// flush all the buffer data
+			FlushBuffer();
+		}
+
+		std::copy(str_.c_str(), str_.c_str() + str_.length(), data + bufferPos);
+
+		bufferPos += str_.length();
+		data[bufferPos++] = '\n';
+
+		buffer.size += str_.length() + 1;
+
+		return true;
+	}
+
+	void FlushBuffer()
+	{
+		if (bufferPos > 0)
+		{
+			stream->WriteNextChunk(&buffer);	// TODO: implement proper error handling on write
+			bufferPos = 0;
+			buffer.size = 0;
+		}
+	}
+
+	void Close()
+	{
+		FlushBuffer();
+
+		TFastqFileImplBase<fq::FastqFileWriter>::Close();
+	}
+};
+
+
+/*
+bool FastqFile::GetFastqDatasetType(FastqDatasetType &type_)
+{
+	if (fastqImpl->mode != FastqFileImpl::ModeRead)
+		return false;
+
+	if (fastqImpl->bufferPos == 0 && fastqImpl->bufferSize == 0)
+		fastqImpl->FeedBuffer();
+
+	return FastqFile::AnalyzeFastqDatasetType(type_, fastqImpl->buffer.Pointer(), fastqImpl->buffer.Size());
+}
+*/
+
+// FASTQ file records writer/reader class
+//
+FastqFileRecordsReader::FastqFileRecordsReader()
+{
+	readerImpl = new FastqRecordsReaderImpl();
+}
+
+FastqFileRecordsReader::~FastqFileRecordsReader()
+{
+	delete readerImpl;
+}
+
+bool FastqFileRecordsReader::Open(const std::string &filename_)
+{
+	return readerImpl->Open(filename_);
+}
+
+void FastqFileRecordsReader::Close()
+{
+	readerImpl->Close();
+}
+
+bool FastqFileRecordsReader::ReadNextRecord(FastqRecord& rec_)
+{
+	if (readerImpl->stream == NULL)
+		return false;
+
+	return readerImpl->ReadString(rec_.tag)
+			&& readerImpl->ReadString(rec_.sequence)
+			&& readerImpl->ReadString(rec_.plus)
+			&& readerImpl->ReadString(rec_.quality);
+}
+
+
+FastqFileRecordsWriter::FastqFileRecordsWriter()
+{
+	writerImpl = new FastqRecordsWriterImpl();
+}
+
+FastqFileRecordsWriter::~FastqFileRecordsWriter()
+{
+	delete writerImpl;
+}
+
+bool FastqFileRecordsWriter::Open(const std::string &filename_)
+{
+	return writerImpl->Open(filename_);
+}
+
+void FastqFileRecordsWriter::Close()
+{
+	writerImpl->Close();
+}
+
+bool FastqFileRecordsWriter::WriteNextRecord(const FastqRecord& rec_)
+{
+	if (writerImpl->stream == NULL)
+		return false;
+
+	return writerImpl->WriteString(rec_.tag)
+			&& writerImpl->WriteString(rec_.sequence)
+			&& writerImpl->WriteString(rec_.plus)
+			&& writerImpl->WriteString(rec_.quality);
+}
+
+
+// FASTQ file records writer/reader implementation -- TODO: bad design, too much code bloat...
+//
+struct FastqFileBlocksReader::FastqBlocksReaderImpl : public TFastqFileImplBase<fq::FastqFileReader>
+{};
+
+struct FastqFileBlocksWriter::FastqBlocksWriterImpl : public TFastqFileImplBase<fq::FastqFileWriter>
+{};
+
+
+// FASTQ file records writer/reader class
+//
+FastqFileBlocksReader::FastqFileBlocksReader()
+{
+	readerImpl = new FastqBlocksReaderImpl();
+}
+
+FastqFileBlocksReader::~FastqFileBlocksReader()
+{
+	delete readerImpl;
+}
+
+bool FastqFileBlocksReader::Open(const std::string &filename_)
+{
+	return readerImpl->Open(filename_);
+}
+
+void FastqFileBlocksReader::Close()
+{
+	readerImpl->Close();
+}
+
+unsigned long int FastqFileBlocksReader::ReadNextBlock(char* buffer_, unsigned long int bufferSize_)
+{
+	if (readerImpl->stream == NULL || buffer_ == NULL || bufferSize_ <= MinBufferSize)
+		return 0;
+
+	fq::FastqDataChunk chunk((byte*)buffer_, (uint64)bufferSize_);
+
+	readerImpl->stream->ReadNextChunk(&chunk);
+	return (unsigned long int)chunk.size;
+}
+
+
+FastqFileBlocksWriter::FastqFileBlocksWriter()
+{
+	writerImpl = new FastqBlocksWriterImpl();
+}
+
+FastqFileBlocksWriter::~FastqFileBlocksWriter()
+{
+	delete writerImpl;
+}
+
+bool FastqFileBlocksWriter::Open(const std::string &filename_)
+{
+	return writerImpl->Open(filename_);
+}
+
+void FastqFileBlocksWriter::Close()
+{
+	writerImpl->Close();
+}
+
+unsigned long int FastqFileBlocksWriter::WriteNextBlock(char* buffer_, unsigned long int dataSize_)
+{
+	if (writerImpl->stream == NULL || buffer_ == NULL || dataSize_ == 0)
+		return 0;
+
+	fq::FastqDataChunk chunk((byte*)buffer_, (uint64)dataSize_);
+	chunk.size = dataSize_;
+
+	writerImpl->stream->WriteNextChunk(&chunk);		// TODO: implement proper error handling on write
+	return dataSize_;
+}
+
 
 } // namespace ext
 

@@ -5,6 +5,7 @@ import sys
 dsrc_exec = "./dsrc"
 lib1_exec = "./example1"
 lib2_exec = "./example2"
+lib3_exec = "./example3"
 
 
 # command patterns to be executed
@@ -17,13 +18,17 @@ lib1_decompress_cmd = "%s d {infile} {outfile}" % lib1_exec
 lib2_compress_cmd = "%s c {params} {infile} {outfile}" % lib2_exec
 lib2_decompress_cmd = "%s d {infile} {outfile}" % lib2_exec
 
+lib3_compress_cmd = "%s c {params} {infile} {outfile}" % lib3_exec
+lib3_decompress_cmd = "%s d {infile} {outfile}" % lib3_exec
+
 diff_cmd = "diff -q {infile} {outfile}"
 
 
 class Compressor:
-    LIB1 = 1
-    LIB2 = 2
-    DSRC = 3
+    LIB1 = "LIB1"
+    LIB2 = "LIB2"
+    LIB3 = "LIB3"
+    DSRC = "DSRC"
 
 class RunException(Exception):
     def __init__(self, msg_):
@@ -54,6 +59,8 @@ def perform_test(infile_, compressor_, decompressor_, lossy_ = False):
         comp_cmd = lib1_compress_cmd
     elif compressor_ == Compressor.LIB2:
         comp_cmd = lib2_compress_cmd
+    elif compressor_ == Compressor.LIB3:
+        comp_cmd = lib3_compress_cmd
     else:
         comp_cmd = dsrc_compress_cmd
 
@@ -61,6 +68,8 @@ def perform_test(infile_, compressor_, decompressor_, lossy_ = False):
         decomp_cmd = lib1_decompress_cmd
     elif decompressor_ == Compressor.LIB2:
         decomp_cmd = lib2_decompress_cmd
+    elif decompressor_ == Compressor.LIB3:
+        decomp_cmd = lib3_decompress_cmd
     else:
         decomp_cmd = dsrc_decompress_cmd
 
@@ -113,35 +122,19 @@ def run_tests(infile_):
     
     print "Running tests on %s file..." % infile_
     
+    compressors = [Compressor.LIB1, Compressor.LIB2, Compressor.LIB3, Compressor.DSRC]
+
     # simple test : only lossless mode
     #
-    print "**** Running case: LIB1->LIB1 ****"  
-    perform_test(infile_, Compressor.LIB1, Compressor.LIB1)
-
-    print "**** Running case: LIB1->LIB2 ****"  
-    perform_test(infile_, Compressor.LIB1, Compressor.LIB2)
-
-    print "**** Running case: LIB1->DSRC ****"  
-    perform_test(infile_, Compressor.LIB1, Compressor.DSRC)
-
-    print "**** Running case: LIB2->LIB2 ****"  
-    perform_test(infile_, Compressor.LIB2, Compressor.LIB2)
-
-    print "**** Running case: LIB2->LIB1 ****"  
-    perform_test(infile_, Compressor.LIB2, Compressor.LIB1)
-
-    print "**** Running case: LIB2->DSRC ****"  
-    perform_test(infile_, Compressor.LIB2, Compressor.DSRC)
-
-    print "**** Running case: DSRC->LIB1 ****"  
-    perform_test(infile_, Compressor.DSRC, Compressor.LIB1)
-
-    print "**** Running case: DSRC->LIB2 ****"  
-    perform_test(infile_, Compressor.DSRC, Compressor.LIB2)
+    for ci in compressors:
+        for co in compressors:
+            print "**** Running case: %s->%s ****" % (ci, co)
+            perform_test(infile_, ci, co)
     
 
     # TODO: lossy mode
-    #        
+    #
+
     
 if __name__ == "__main__":
     if len(sys.argv) != 2 or "-h" in sys.argv[1]:

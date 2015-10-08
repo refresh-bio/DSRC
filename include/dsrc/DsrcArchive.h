@@ -58,6 +58,8 @@ public:
 								 uint32 threadsNum_ = 1) = 0;		// for future use, currently only 1
 	virtual void FinishDecompress() = 0;
 
+	bool GetCompressionSettings(DsrcCompressionSettings& settings_) const;
+
 	bool IsError() const;
 	const std::string& GetError() const;
 	void ClearError();
@@ -135,7 +137,7 @@ public:
 	void FinishCompress();
 
 	// returns the number of compressed bytes written
-	uint64 WriteNextBlock(const byte* buffer_, uint64 bufferSize_);
+	unsigned long WriteNextBlock(const char* buffer_, unsigned long bufferSize_);
 
 private:
 	struct BlockWriterImpl;
@@ -154,7 +156,7 @@ public:
 	void FinishDecompress();
 
 	// returns number of bytes read
-	uint64 ReadNextBlock(byte* buffer_, uint64 bufferSize_);
+	unsigned long ReadNextBlock(char* buffer_, unsigned long bufferSize_);
 
 private:
 	struct BlockReaderImpl;

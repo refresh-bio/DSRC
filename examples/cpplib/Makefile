@@ -1,4 +1,4 @@
-all: example1 example2
+all: example1 example2 example3
 
 INC_PATH = ../../include/dsrc
 LIB_PATH = ../../lib/
@@ -15,7 +15,12 @@ example2: example2.o
 	$(CXX) $(CXXFLAGS) -o $@ $? -L$(LIB_PATH) $(DSRC_LIB) $(DEP_LIBS)
 	strip $@
 
+example3: example3.o
+	$(CXX) $(CXXFLAGS) -o $@ $? -L$(LIB_PATH) $(DSRC_LIB) $(DEP_LIBS)
+	strip $@
+
 clean:
 	-rm *.o
 	-rm example1
 	-rm example2
+	-rm example3

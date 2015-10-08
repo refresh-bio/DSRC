@@ -43,11 +43,31 @@ void PrintMessage()
 	std::cerr << "usage: example1 <c|d> [L] <in_filename> <out_filename>" << std::endl;
 }
 
+
+// RAII buffer wrapper (but better use smart pointers, if possible)
+struct FastqBuffer
+{
+	FastqBuffer(unsigned long int capacity_)
+		:	capacity(capacity_)
+	{
+		data = new char[capacity_];
+	}
+
+	~FastqBuffer()
+	{
+		delete data;
+	}
+
+	const unsigned long int capacity;
+	char* data;
+};
+
+
 int CompressFile(const char* inFilename_, const char* outFilename_)
 {
 	// 1. Open FASTQ file
 	//
-	FastqFileRecordsReader fastqFile;
+	FastqFileBlocksReader fastqFile;
 	if (!fastqFile.Open(inFilename_))		// TODO: analyze the dataset type
 	{
 		std::cerr << "Error: cannot open FASTQ file: " << inFilename_ << std::endl;
@@ -63,7 +83,7 @@ int CompressFile(const char* inFilename_, const char* outFilename_)
 	settings.fastqBufferSizeMb = 8;
 
 	// initialize compression routine with prepared settings
-	DsrcArchiveRecordsWriter archive;
+	DsrcArchiveBlocksWriter archive;
 	if (!archive.StartCompress(outFilename_, settings))
 	{
 		fastqFile.Close();
@@ -75,13 +95,19 @@ int CompressFile(const char* inFilename_, const char* outFilename_)
 
 	// 3. When configured, start compression
 	//
-	int recCount = 0;
-	FastqRecord rec;
-	while (fastqFile.ReadNextRecord(rec))
+	FastqBuffer buffer(settings.fastqBufferSizeMb << 20);
+	int blocksCount = 0;
+	do
 	{
-		archive.WriteNextRecord(rec);
-		recCount++;
+		unsigned long int blockSize = fastqFile.ReadNextBlock(buffer.data, buffer.capacity);
+
+		if (blockSize == 0)
+			break;
+
+		archive.WriteNextBlock(buffer.data, blockSize);
+		blocksCount++;
 	}
+	while (1);
 
 	// 4. Finish compression and close FASTQ file
 	//
@@ -90,7 +116,7 @@ int CompressFile(const char* inFilename_, const char* outFilename_)
 	fastqFile.Close();
 
 	std::cerr << "Sucess!" << std::endl;
-	std::cerr << "Compressed records: " << recCount << std::endl;
+	std::cerr << "Compressed blocks: " << blocksCount << std::endl;
 	return 0;
 }
 
@@ -99,7 +125,7 @@ int CompressFile_lossy(const char* inFilename_, const char* outFilename_)
 {
 	// 1. Open FASTQ file
 	//
-	FastqFileRecordsReader fastqFile;
+	FastqFileBlocksReader fastqFile;
 	if (!fastqFile.Open(inFilename_))		// TODO: analyze the dataset type
 	{
 		std::cerr << "Error: cannot open FASTQ file: " << inFilename_ << std::endl;
@@ -121,7 +147,7 @@ int CompressFile_lossy(const char* inFilename_, const char* outFilename_)
 	settings.tagPreserveMask = FieldMask().AddField(1).AddField(2).GetMask();
 
 	// initialize compression routine with prepared settings
-	DsrcArchiveRecordsWriter archive;
+	DsrcArchiveBlocksWriter archive;
 	if (!archive.StartCompress(outFilename_, settings))
 	{
 		fastqFile.Close();
@@ -133,13 +159,19 @@ int CompressFile_lossy(const char* inFilename_, const char* outFilename_)
 
 	// 3. When configured, start compression
 	//
-	int recCount = 0;
-	FastqRecord rec;
-	while (fastqFile.ReadNextRecord(rec))
+	FastqBuffer buffer(settings.fastqBufferSizeMb << 20);
+	int blocksCount = 0;
+	do
 	{
-		archive.WriteNextRecord(rec);
-		recCount++;
+		unsigned long int blockSize = fastqFile.ReadNextBlock(buffer.data, buffer.capacity);
+
+		if (blockSize == 0)
+			break;
+
+		archive.WriteNextBlock(buffer.data, blockSize);
+		blocksCount++;
 	}
+	while (1);
 
 	// 4. Finish compression and close FASTQ file
 	//
@@ -148,7 +180,7 @@ int CompressFile_lossy(const char* inFilename_, const char* outFilename_)
 	fastqFile.Close();
 
 	std::cerr << "Sucess!" << std::endl;
-	std::cerr << "Compressed records: " << recCount << std::endl;
+	std::cerr << "Compressed blocks: " << blocksCount << std::endl;
 	return 0;
 }
 
@@ -157,7 +189,7 @@ int DecompressFile(const char* inFilename_, const char* outFilename_)
 {
 	// 1. Open DSRC archive
 	//
-	DsrcArchiveRecordsReader archive;
+	DsrcArchiveBlocksReader archive;
 	if (!archive.StartDecompress(inFilename_))
 	{
 		std::cerr << "Error!" << std::endl;
@@ -167,7 +199,7 @@ int DecompressFile(const char* inFilename_, const char* outFilename_)
 
 	// 2. Create output FASTQ file
 	//
-	FastqFileRecordsWriter fastqFile;
+	FastqFileBlocksWriter fastqFile;
 	if (!fastqFile.Open(outFilename_))
 	{
 		archive.FinishDecompress();
@@ -178,13 +210,24 @@ int DecompressFile(const char* inFilename_, const char* outFilename_)
 
 	// 3. Start decompression
 	//
-	long int recCount = 0;
-	FastqRecord rec;
-	while (archive.ReadNextRecord(rec))
+	// get the block size of the initial FASTQ file
+	// for better performance and memory utilisation
+	DsrcCompressionSettings settings;
+	archive.GetCompressionSettings(settings);
+	FastqBuffer buffer(settings.fastqBufferSizeMb << 20);
+
+	long int blocksCount = 0;
+	do
 	{
-		fastqFile.WriteNextRecord(rec);
-		recCount++;
+		unsigned long blockSize = archive.ReadNextBlock(buffer.data, buffer.capacity);
+
+		if (blockSize == 0)
+			break;
+
+		fastqFile.WriteNextBlock(buffer.data, blockSize);
+		blocksCount++;
 	}
+	while (1);
 
 	// 4. Finish decompression and close FASTQ file
 	//
@@ -193,6 +236,6 @@ int DecompressFile(const char* inFilename_, const char* outFilename_)
 	archive.FinishDecompress();
 
 	std::cerr << "Success!" << std::endl;
-	std::cerr << "Decompressed records: " << recCount << std::endl;
+	std::cerr << "Decompressed blocks: " << blocksCount << std::endl;
 	return 0;
 }

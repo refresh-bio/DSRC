@@ -124,6 +124,7 @@ struct CompressionSettings
 		return s;
 	}
 
+	// TODO: implement uniform settings to skip the conversion process
 	static CompressionSettings ConvertFrom(const DsrcCompressionSettings& dsrcSettings_)
 	{
 		CompressionSettings outSettings;
@@ -135,6 +136,22 @@ struct CompressionSettings
 
 		outSettings.lossyQuality = dsrcSettings_.lossyQualityCompression;
 		outSettings.tagPreserveFlags = dsrcSettings_.tagPreserveMask;
+		outSettings.calculateCrc32 = dsrcSettings_.calculateCrc32;
+		outSettings.fastqBufferSizeMb = dsrcSettings_.fastqBufferSizeMb;
+		return outSettings;
+	}
+
+	static DsrcCompressionSettings ConvertTo(const CompressionSettings& dsrcSettings_)
+	{
+		DsrcCompressionSettings outSettings;
+		outSettings.dnaCompressionLevel = dsrcSettings_.dnaOrder / 3;
+		if (dsrcSettings_.lossyQuality)
+			outSettings.qualityCompressionLevel = dsrcSettings_.qualityOrder / 3;
+		else
+			outSettings.qualityCompressionLevel = dsrcSettings_.qualityOrder;
+
+		outSettings.lossyQualityCompression = dsrcSettings_.lossyQuality;
+		outSettings.tagPreserveMask = dsrcSettings_.tagPreserveFlags;
 		outSettings.calculateCrc32 = dsrcSettings_.calculateCrc32;
 		outSettings.fastqBufferSizeMb = dsrcSettings_.fastqBufferSizeMb;
 		return outSettings;

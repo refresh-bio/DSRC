@@ -23,7 +23,10 @@ namespace lib
 {
 
 typedef ext::FastqRecord FastqRecord;
-typedef ext::FastqFile FastqFile;
+typedef ext::FastqFileRecordsReader FastqFileRecordsReader;
+typedef ext::FastqFileRecordsWriter FastqFileRecordsWriter;
+typedef ext::FastqFileBlocksReader FastqFileBlocksReader;
+typedef ext::FastqFileBlocksWriter FastqFileBlocksWriter;
 
 typedef FieldMask FieldMask;
 typedef DsrcCompressionSettings DsrcCompressionSettings;

@@ -13,5 +13,5 @@ INCLUDEPATH += ../../include/dsrc
 # Specify path to DSRC library file
 LIBS += $$_PRO_FILE_PWD_/../../lib/libdsrc.a
 
-LIBS += -lpthread
+LIBS += -pthread
 #LIBS += -lboost_thread
