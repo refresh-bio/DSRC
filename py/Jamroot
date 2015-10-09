@@ -24,7 +24,7 @@ project
 # Extension modules
 #
 python-extension pydsrc
-	: Interface.cpp ../src/DsrcModule.cpp ../src/DsrcArchive.cpp ../src/FastqFile.cpp ../src/BlockCompressorExt.cpp ../src/Configurable.cpp ../src/DsrcWorker.cpp ../src/DsrcIo.cpp ../src/DsrcFile.cpp ../src/DsrcOperator.cpp ../src/BlockCompressor.cpp ../src/FastqIo.cpp ../src/RecordsProcessor.cpp ../src/FastqParser.cpp ../src/FastqStream.cpp ../src/FileStream.cpp ../src/StdStream.cpp ../src/TagModeler.cpp ../src/DnaModelerHuffman.cpp ../src/QualityPositionModeler.cpp ../src/QualityRLEModeler.cpp ../src/huffman.cpp
+	: Interface.cpp ../src/DsrcModule.cpp ../src/DsrcArchive.cpp ../src/FastqFile.cpp ../src/RecordsBlockCompressor.cpp ../src/DsrcWorker.cpp ../src/DsrcIo.cpp ../src/DsrcFile.cpp ../src/DsrcOperator.cpp ../src/BlockCompressor.cpp ../src/FastqIo.cpp ../src/RecordsProcessor.cpp ../src/FastqParser.cpp ../src/FastqStream.cpp ../src/FileStream.cpp ../src/StdStream.cpp ../src/TagModeler.cpp ../src/DnaModelerHuffman.cpp ../src/QualityPositionModeler.cpp ../src/QualityRLEModeler.cpp ../src/huffman.cpp
 
 #
 # Important!

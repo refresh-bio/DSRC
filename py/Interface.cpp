@@ -16,6 +16,7 @@
 #include <boost/python/enum.hpp>
 #include <boost/python/exception_translator.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/python/overloads.hpp>
 
 #include <Python.h>
 
@@ -32,8 +33,11 @@ namespace py
 {
 
 namespace boo = boost::python;
-using namespace wrap;
+using namespace ext;
 
+
+// Exception handling
+//
 class PyException : public DsrcException
 {
 public:
@@ -51,6 +55,247 @@ public:
 	}
 };
 
+template <class _T>
+void TCheckError(_T& obj_)
+{
+	if (obj_.IsError())
+	{
+		std::string err = obj_.GetError();
+		obj_.ClearError();
+		throw PyException(err);
+	}
+}
+
+
+// Compression settings
+//
+struct PyDsrcCompressionSettings : public DsrcCompressionSettings
+{
+	int GetDnaCompressionLevel() const
+	{
+		return dnaCompressionLevel;
+	}
+
+	void SetDnaCompressionLevel(int v_)
+	{
+		if (v_ < (int)DsrcCompressionSettings::MinDnaCompressionLevel || v_ > (int)DsrcCompressionSettings::MaxDnaCompressionLevel)
+			throw PyException("Invalid DNA compression level specified");
+		dnaCompressionLevel = v_;
+	}
+
+	int GetQualityCompressionLevel() const
+	{
+		return qualityCompressionLevel;
+	}
+
+	void SetQualityCompressionLevel(int v_)
+	{
+		if (v_ < (int)DsrcCompressionSettings::MinQualityCompressionLevel || v_ > (int)DsrcCompressionSettings::MaxQualityCompressionLevel)
+			throw PyException("Invalid quality compression level specified");
+		qualityCompressionLevel = v_;
+	}
+
+	bool IsLossyQualityCompression() const
+	{
+		return lossyQualityCompression;
+	}
+
+	void SetLossyQualityCompression(bool v_)
+	{
+		lossyQualityCompression = v_;
+	}
+
+	long int GetTagFieldPreserveMask() const
+	{
+		return tagPreserveMask;
+	}
+
+	void SetTagFieldPreserveMask(long int v_)
+	{
+		tagPreserveMask = v_;
+	}
+
+	int GetFastqBufferSizeMb() const
+	{
+		return fastqBufferSizeMb;
+	}
+
+	void SetFastqBufferSizeMb(int v_)
+	{
+		if (v_ < (int)DsrcCompressionSettings::MinFastqBufferSizeMB || v_ > (int)DsrcCompressionSettings::MaxFastqBufferSizeMB)
+			throw PyException("Invalid FASTQ buffer size specified");
+		fastqBufferSizeMb = v_;
+	}
+
+	bool IsCrc32Checking() const
+	{
+		return calculateCrc32;
+	}
+
+	void SetCrc32Checking(bool v_)
+	{
+		calculateCrc32 = v_;
+	}
+};
+
+
+// FASTQ interfaces
+//
+class PyFastqFileRecordsReader
+{
+public:
+	void Open(const std::string &filename_)
+	{
+		if (!reader.Open(filename_))
+			throw PyException("Cannot open file: " + filename_);
+	}
+
+	void Close()
+	{
+		reader.Close();
+	}
+
+	bool ReadNextRecord(FastqRecord& rec_)
+	{
+		return reader.ReadNextRecord(rec_);
+	}
+
+private:
+	FastqFileRecordsReader reader;
+};
+
+
+class PyFastqFileRecordsWriter
+{
+public:
+	void Open(const std::string &filename_)
+	{
+		if (!writer.Open(filename_))
+			throw PyException("Cannot open file: " + filename_);
+	}
+
+	void Close()
+	{
+		writer.Close();
+	}
+
+	void WriteNextRecord(const FastqRecord& rec_)
+	{
+		writer.WriteNextRecord(rec_);
+	}
+
+private:
+	FastqFileRecordsWriter writer;
+};
+
+
+// DSRC module interfaces
+//
+class PyDsrcModule
+{
+public:
+	void Compress(const std::string& inFastqFilename_,
+				  const std::string& outDsrcFilename_,
+				  const PyDsrcCompressionSettings& compSettings_,
+				  uint32 threadsNum_,
+				  bool useFastqStdIo_ = false,
+				  uint32 qualityOffset_ = 0)
+	{
+		dsrc.Compress(inFastqFilename_,
+					  outDsrcFilename_,
+					  compSettings_,
+					  threadsNum_,
+					  useFastqStdIo_,
+					  qualityOffset_);
+		TCheckError(dsrc);
+	}
+
+	void Decompress(const std::string& inDsrcFilename_,
+					const std::string& outFastqFilename_,
+					uint32 threadsNum_,
+					bool useFastqStdIo_ = false)
+	{
+		dsrc.Decompress(inDsrcFilename_,
+						outFastqFilename_,
+						threadsNum_,
+						useFastqStdIo_);
+		TCheckError(dsrc);
+	}
+
+	// we need to overload member functions with default arguments for Python <-> C++ API compatibility
+	BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(Compress_overload, Compress, 4, 6)
+	BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(Decompress_overload, Decompress, 3, 4)
+
+private:
+	DsrcModule dsrc;
+};
+
+
+// DSRC archive interfaces
+//
+class PyDsrcArchiveRecordsWriter
+{
+public:
+	void StartCompress(const std::string& dsrcFilename_,
+					   const PyDsrcCompressionSettings& compressionSettings_,
+					   uint32 qualityOffset_ = 0)
+	{
+		writer.StartCompress(dsrcFilename_,
+							 compressionSettings_,
+							 1,						// threads num -- atm only 1
+							 qualityOffset_);
+		TCheckError(writer);
+	}
+
+	void FinishCompress()
+	{
+		writer.FinishCompress();
+		TCheckError(writer);
+	}
+
+	void WriteNextRecord(const FastqRecord& rec_)
+	{
+		writer.WriteNextRecord(rec_);
+		TCheckError(writer);
+	}
+
+	BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(StartCompress_overload, StartCompress, 2, 3)
+
+private:
+	DsrcArchiveRecordsWriter writer;
+};
+
+
+class PyDsrcArchiveRecordsReader
+{
+public:
+	void StartDecompress(const std::string& dsrcFilename_)
+	{
+		reader.StartDecompress(dsrcFilename_, 1);		// threads num -- atm only 1
+		TCheckError(reader);
+	}
+
+	void FinishDecompress()
+	{
+		reader.FinishDecompress();
+		TCheckError(reader);
+	}
+
+	bool ReadNextRecord(FastqRecord& rec_)
+	{
+		if (!reader.ReadNextRecord(rec_))
+		{
+			TCheckError(reader);
+			return false;
+		}
+		return true;
+	}
+
+private:
+	DsrcArchiveRecordsReader reader;
+};
+
+
 
 BOOST_PYTHON_MODULE(pydsrc)
 {
@@ -63,12 +308,25 @@ BOOST_PYTHON_MODULE(pydsrc)
 		.def_readwrite("quality", &FastqRecord::quality)
 	;
 
-	boo::class_<FastqFile, boost::noncopyable>("FastqFile")
-		.def("Open", &FastqFile::Open)
-		.def("Create", &FastqFile::Create)
-		.def("Close", &FastqFile::Close)
-		.def("ReadNextRecord", &FastqFile::ReadNextRecord)
-		.def("WriteNextRecord", &FastqFile::WriteNextRecord)
+	boo::class_<PyFastqFileRecordsReader, boost::noncopyable>("FastqFileRecordsReader")
+		.def("Open", &PyFastqFileRecordsReader::Open)
+		.def("Close", &PyFastqFileRecordsReader::Close)
+		.def("ReadNextRecord", &PyFastqFileRecordsReader::ReadNextRecord)
+	;
+
+	boo::class_<PyFastqFileRecordsWriter, boost::noncopyable>("FastqFileRecordsWriter")
+		.def("Open", &PyFastqFileRecordsWriter::Open)
+		.def("Close", &PyFastqFileRecordsWriter::Close)
+		.def("WriteNextRecord", &PyFastqFileRecordsWriter::WriteNextRecord)
+	;
+
+	boo::class_<PyDsrcCompressionSettings>("CompressionSettings")
+		.add_property("DNACompressionLevel", &PyDsrcCompressionSettings::GetDnaCompressionLevel, &PyDsrcCompressionSettings::SetDnaCompressionLevel)
+		.add_property("QualityCompressionLevel", &PyDsrcCompressionSettings::GetQualityCompressionLevel, &PyDsrcCompressionSettings::SetDnaCompressionLevel)
+		.add_property("LossyCompression", &PyDsrcCompressionSettings::IsLossyQualityCompression, &PyDsrcCompressionSettings::SetLossyQualityCompression)
+		.add_property("TagFieldFilterMask", &PyDsrcCompressionSettings::GetTagFieldPreserveMask, &PyDsrcCompressionSettings::SetTagFieldPreserveMask)
+		.add_property("FastqBufferSizeMB", &PyDsrcCompressionSettings::GetFastqBufferSizeMb, &PyDsrcCompressionSettings::SetFastqBufferSizeMb)
+		.add_property("Crc32Checking", &PyDsrcCompressionSettings::IsCrc32Checking, &PyDsrcCompressionSettings::SetCrc32Checking)
 	;
 
 	boo::class_<FieldMask>("FieldMask")
@@ -76,35 +334,21 @@ BOOST_PYTHON_MODULE(pydsrc)
 		.def("GetMask", &FieldMask::GetMask)
 	;
 
-	boo::class_<DsrcArchive, boost::noncopyable>("DsrcArchive")
-		.def("StartCompress", &DsrcArchive::StartCompress)
-		.def("WriteNextRecord", &DsrcArchive::WriteNextRecord)
-		.def("FinishCompress", &DsrcArchive::FinishCompress)
-		.def("StartDecompress", &DsrcArchive::StartDecompress)
-		.def("ReadNextRecord", &DsrcArchive::ReadNextRecord)
-		.def("FinishDecompress", &DsrcArchive::FinishDecompress)
-		.add_property("LossyCompression", &DsrcArchive::IsLossyCompression, &DsrcArchive::SetLossyCompression)
-		.add_property("DNACompressionLevel", &DsrcArchive::GetDnaCompressionLevel, &DsrcArchive::SetDnaCompressionLevel)
-		.add_property("QualityCompressionLevel", &DsrcArchive::GetQualityCompressionLevel, &DsrcArchive::SetDnaCompressionLevel)
-		.add_property("TagFieldFilterMask", &DsrcArchive::GetTagFieldFilterMask, &DsrcArchive::SetTagFieldFilterMask)
-		.add_property("PlusRepetition", &DsrcArchive::IsPlusRepetition, &DsrcArchive::SetPlusRepetition)
-		.add_property("QualityOffset", &DsrcArchive::GetQualityOffset, &DsrcArchive::SetQualityOffset)
-		.add_property("ColorSpace", &DsrcArchive::IsColorSpace, &DsrcArchive::SetColorSpace)
-		.add_property("FastqBufferSizeMB", &DsrcArchive::GetFastqBufferSizeMB, &DsrcArchive::SetFastqBufferSizeMB)
-		.add_property("Crc32Checking", &DsrcArchive::IsCrc32Checking, &DsrcArchive::SetCrc32Checking)
+	boo::class_<PyDsrcModule, boost::noncopyable>("DsrcModule")
+		.def("Compress", &PyDsrcModule::Compress, PyDsrcModule::Compress_overload())
+		.def("Decompress", &PyDsrcModule::Decompress, PyDsrcModule::Decompress_overload())
 	;
 
-	boo::class_<DsrcModule, boost::noncopyable>("DsrcModule")
-		.def("Compress", &DsrcModule::Compress)
-		.def("Decompress", &DsrcModule::Decompress)
-		//.def("Usage", &DsrcModule::Usage)
-		.add_property("LossyCompression", &DsrcModule::IsLossyCompression, &DsrcModule::SetLossyCompression)
-		.add_property("DNACompressionLevel", &DsrcModule::GetDnaCompressionLevel, &DsrcModule::SetDnaCompressionLevel)
-		.add_property("QualityCompressionLevel", &DsrcModule::GetQualityCompressionLevel, &DsrcModule::SetDnaCompressionLevel)
-		.add_property("TagFieldFilterMask", &DsrcModule::GetTagFieldFilterMask, &DsrcModule::SetTagFieldFilterMask)
-		.add_property("FastqBufferSizeMB", &DsrcModule::GetFastqBufferSizeMB, &DsrcModule::SetFastqBufferSizeMB)
-		.add_property("ThreadsNumber", &DsrcModule::GetThreadsNumber, &DsrcModule::SetThreadsNumber)
-		.add_property("Crc32Checking", &DsrcModule::IsCrc32Checking, &DsrcModule::SetCrc32Checking)
+	boo::class_<PyDsrcArchiveRecordsWriter, boost::noncopyable>("DsrcArchiveRecordsWriter")
+		.def("StartCompress", &PyDsrcArchiveRecordsWriter::StartCompress, PyDsrcArchiveRecordsWriter::StartCompress_overload())
+		.def("WriteNextRecord", &PyDsrcArchiveRecordsWriter::WriteNextRecord)
+		.def("FinishCompress", &PyDsrcArchiveRecordsWriter::FinishCompress)
+	;
+
+	boo::class_<PyDsrcArchiveRecordsReader, boost::noncopyable>("DsrcArchiveRecordsReader")
+		.def("StartDecompress", &PyDsrcArchiveRecordsReader::StartDecompress)
+		.def("ReadNextRecord", &PyDsrcArchiveRecordsReader::ReadNextRecord)
+		.def("FinishDecompress", &PyDsrcArchiveRecordsReader::FinishDecompress)
 	;
 }
 

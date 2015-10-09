@@ -39,6 +39,8 @@ SOURCES += \
     DsrcModule.cpp
 
 #SOURCES += ../py/Interface.cpp
+#LIBS += -lboost_python -lpython2.7
+
 
 SOURCES += main.cpp
 
@@ -90,5 +92,3 @@ HEADERS += \
     ../include/dsrc/Dsrc.h \
     ../include/dsrc/Globals.h \
     ../include/dsrc/FastqRecord.h
-
-#LIBS += -lboost_python -lpython2.7
