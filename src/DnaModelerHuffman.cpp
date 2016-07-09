@@ -31,9 +31,10 @@ void DnaModelerHuffman::ProcessStats(const DnaStats &stats_)
 	//
 	coder.Restart(symbolCount);
 
-	for (uint32 i = 0; i < symbolCount; ++i)
+	for (uint32 i = 0; i < MaxSymbolCount; ++i)
 	{
-		coder.Insert(stats_.symbolFreqs[symbols[i]]);
+		if (stats_.symbolFreqs[i] > 0)
+			coder.Insert(stats_.symbolFreqs[i]);
 	}
 	coder.Complete();
 }

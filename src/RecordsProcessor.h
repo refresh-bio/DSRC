@@ -163,6 +163,8 @@ public:
 	LosslessRecordsProcessor(uint32 qualityOffset_, bool colorSpace_);
 
 protected:
+	static const uint32 MaxSymbolsCount = DnaStats::MaxSymbolCount;
+
 	uchar dnaToIndexTable[128];
 	uchar dnaFromIndexTable[DnaStats::MaxSymbolCount];
 

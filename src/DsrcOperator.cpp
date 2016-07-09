@@ -28,7 +28,6 @@ namespace th = boost;
 namespace th = std;
 #endif
 
-
 #include <sstream>
 #include <iomanip>
 
