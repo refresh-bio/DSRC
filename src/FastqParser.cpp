@@ -134,7 +134,7 @@ bool FastqParser::Analyze(const FastqDataChunk& chunk_, FastqDatasetType& header
 		}
 	}
 
-	return recCount > 0;
+	return (recCount > 0 && !header_.colorSpace) || recCount > 1;
 }
 
 bool FastqParser::Analyze(const std::vector<FastqRecord>& records_, uint64 recCount_, bool estimateQualityOffset_, bool& isColorSpace_, uint32& qualityOffset_)
@@ -211,7 +211,7 @@ bool FastqParser::Analyze(const std::vector<FastqRecord>& records_, uint64 recCo
 		}
 	}
 
-	return recCount > 0;
+	return (recCount > 0 && !isColorSpace_) || recCount > 1;
 }
 
 uint64 FastqParser::ParseFrom(const FastqDataChunk& chunk_, std::vector<FastqRecord>& records_, uint64& rec_count_, StreamsInfo& streamsInfo_)
