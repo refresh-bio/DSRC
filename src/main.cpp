@@ -127,7 +127,7 @@ void message()
 
 	std::cerr << "both compression and decompression options:\n";
 	std::cerr << "\t-t<n>\t: processing threads number, default: " << DsrcModule::AvailableHardwareThreadsNum << "(available h/w threads), max: 64" << '\n';
-	std::cerr << "\t-s\t: use stdin/stdout for reading/writing raw FASTQ data\n";
+	std::cerr << "\t-s\t: read FASTQ data from stdin (compression) or write FASTQ data to stdout (decompression)\n";
 	std::cerr << "\t-v\t: verbose mode, default: false\n\n";
 
 	std::cerr << "usage examples:\n";
@@ -140,7 +140,7 @@ void message()
 	std::cerr << "* compress file in the best mode with lossy Quality mode and preserving only 1–4 fields from record IDs:\n";
 	std::cerr << "\tdsrc c -m2 -l -f1,2,3,4 SRR001471.fastq SRR001471.dsrc\n";
 	std::cerr << "* compress in the best mode reading raw FASTQ data from stdin:\n";
-	std::cerr << "\tcat SRR001471.fastq | dsrc c -m2 -s SRR001471.dsrc\n";
+	std::cerr << "\tcat SRR001471.fastq | dsrc c -s -m2 -s SRR001471.dsrc\n";
 	std::cerr << "* decompress SRR001471.dsrc archive saving output FASTQ file to SRR001471.out.fastq:\n";
 	std::cerr << "\tdsrc d SRR001471.dsrc SRR001471.out.fastq\n";
 	std::cerr << "* decompress archive using 4 threads and streaming raw FASTQ data to stdout:\n";
