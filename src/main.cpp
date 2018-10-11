@@ -284,8 +284,9 @@ bool parse_arguments(int argc_, const char* argv_[], InputArguments& outArgs_)
 			dsrcFilename = &outArgs_.inputFilename;
 		}
 
-		if (fastqFilename != NULL && !ends_with(*fastqFilename, ".fastq"))
-			std::cerr << "Warning: passing a FASTQ file without '.fastq' extension\n";
+		if (fastqFilename != NULL && !ends_with(*fastqFilename, ".fastq")
+				&& !ends_with(*fastqFilename, ".fq") )
+			std::cerr << "Warning: passing a FASTQ file without '.fastq|.fq' extension\n";
 
 		if (dsrcFilename != NULL && !ends_with(*dsrcFilename, ".dsrc"))
 			std::cerr << "Warning: passing a DSRC file without '.dsrc' extension\n";
