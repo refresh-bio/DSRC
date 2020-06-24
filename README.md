@@ -1,4 +1,6 @@
 # DSRC
+[![GitHub downloads](https://img.shields.io/github/downloads/refresh-bio/dsrc/total.svg?style=flag&label=GitHub%20downloads)](https://github.com/refresh-bio/DSRC/releases)
+[![Bioconda downloads](https://img.shields.io/conda/dn/bioconda/dsrc.svg?style=flag&label=Bioconda%20downloads)](https://anaconda.org/bioconda/dsrc)
 
   DSRC is a toolkit designed for efficient high-performance compression of sequencing reads stored in FASTQ format, where it's main features are:
 * Effective multithreaded compression of FASTQ files.
