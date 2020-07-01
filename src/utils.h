@@ -99,13 +99,15 @@ inline bool extend_string(uchar *&str, uint32 &size)
 	uint32 new_size = size * 2;
 	uchar *p = new uchar[new_size+1];
 
-	if (!p)
+	if ( p == nullptr)
 		return false;
 
 	std::copy(str, str+size, p);
 	size = new_size;
 	delete[] str;
 	str = p;
+
+	delete[] p;
 
 	return true;
 }
