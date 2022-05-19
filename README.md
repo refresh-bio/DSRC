@@ -231,3 +231,7 @@ Decompress archive using `4` threads and streaming raw FASTQ data to stdout:
 
     dsrc d -t4 -s SRR001471.dsrc > SRR001471.out.fastq
     
+## Citing
+[Roguski, L., Deorowicz, S. (2014) DSRC 2: Industry-oriented compression of FASTQ files, Bioinformatics, 30(15):2213&ndash;2215.](https://doi.org/10.1093/bioinformatics/btu208)
+
+[Deorowicz, S., Grabowski, Sz. (2011) Compression of DNA sequences in FASTQ format, Bioinformatics, 27(6):860&ndash;862.](https://doi.org/10.1093/bioinformatics/btr014)
