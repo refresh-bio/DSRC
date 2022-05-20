@@ -12,15 +12,8 @@
 * Availability for Linux, Mac OSX and Windows 64-bit operating systems.
 * Open source C++ code under GNU GPL 2 license.
 
-For more information please check out the [official website](http://sun.aei.polsl.pl/dsrc/).
-
 
 # Building
-
-## Pre-built binaries and libraries
-
-Pre-built binaries and libraries for Linux, Mac OSX and Windows platforms can be downloaded from the [official website](http://sun.aei.polsl.pl/dsrc/download.html).
-
 
 ## Build prerequisites
 
