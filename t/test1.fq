@@ -1,0 +1,12 @@
+@1 CLIP IS AGTCCCGTAC AT >=
+ATATGCTACGTTTGTGACCTAGTCCCGTAC
++
+hhhhhhhhhhhhhhhhhhhhhhhffgffaa
+@2 CLIP AGTCCCGTAC + AAAA's
+ATGTTCGTATATGAGCAGTCCCGTACAAAA
++
+hhbhhhhhhhhhhhhhhhhhhhhfffffaa
+@3 CLIP JUST AGTCC
+TATAGCCTCTAGCTTGACTCTAGCTAGTCC
++
+hhhhhhhhhhhhhhhhhhhhhhfffffaaa
